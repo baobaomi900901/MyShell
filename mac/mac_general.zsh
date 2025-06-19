@@ -1,5 +1,5 @@
 updatesh() { source ~/.zshrc }
-setsh() { code ~/.zshrc }
+setsh() { code ~/MyShell }
 upapp() { sudo spctl --master-disable }
 
 
