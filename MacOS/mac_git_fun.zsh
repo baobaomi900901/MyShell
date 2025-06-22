@@ -20,20 +20,6 @@ gcmt ()
 }
 
 greset() {
-    # if [ "$1" = "all" ]; then
-    #     git reset --hard HEAD
-    #     echo "已执行 git reset --hard HEAD（强制重置工作区和暂存区）"
-    
-    # # 定义 greset back（软重置到上一个提交，保留更改到暂存区）
-    # elif [ "$1" = "back" ]; then
-    #     git reset --soft HEAD~1
-    #     echo "已执行 git reset --soft HEAD~1（撤销最新提交，保留更改到暂存区）"
-    
-    # else
-    #     echo "用法:"
-    #     echo "  greset all   # 强制重置到 HEAD（丢弃所有未提交的更改）"
-    #     echo "  greset back  # 软重置到上一个提交（保留更改到暂存区）"
-    # fi
     case "$1" in
         all)
             git reset --hard HEAD
