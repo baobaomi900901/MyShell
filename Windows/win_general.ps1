@@ -1,6 +1,23 @@
 ﻿# 生效脚本
 # . $PROFILE 
 
+function helpsh {
+    Write-Host "内置方法:" -ForegroundColor Blue
+    Write-Host "setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
+    Write-Host "remove_sh     # 删除别名或函数" -ForegroundColor Yellow
+    Write-Host "type          # 查看 cd_ 方法是否存在" -ForegroundColor Yellow
+    Write-Host "cd_           # 切换到指定目录" -ForegroundColor Yellow
+    Write-Host "code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
+    Write-Host "" -ForegroundColor Yellow
+    Write-Host "git相关操作:" -ForegroundColor Blue
+    Write-Host "gs            # git status" -ForegroundColor Yellow
+    Write-Host "gcmt          # git commit -m" -ForegroundColor Yellow
+    Write-Host "ga            # git add" -ForegroundColor Yellow
+    Write-Host "gpr           # git pull" -ForegroundColor Yellow
+    Write-Host "gpo           # git push" -ForegroundColor Yellow
+    Write-Host "greset        # git reset --hard" -ForegroundColor Yellow
+}
+
 function setsh { 
   code C:\Users\Admin\Documents\WindowsPowerShell\MyShell
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \windows 文件夹下" -ForegroundColor Green

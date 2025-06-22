@@ -47,9 +47,9 @@ function greset {
             Write-Host "Executed: git reset --soft HEAD~1 (撤销最新提交，保留更改到暂存区)"
         }
         default {
-            Write-Host "使用方法:" -ForegroundColor Yellow
-            Write-Host "  greset all   # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Cyan
-            Write-Host "  greset back  # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Cyan
+            Write-Host "使用方法:" -ForegroundColor blue
+            Write-Host "  greset all   # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
+            Write-Host "  greset back  # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow 
         }
     }
 }
