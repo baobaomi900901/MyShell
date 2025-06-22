@@ -27,7 +27,7 @@ remove_sh() {
     done
 }
 
-helpsh() {
+hsh() {
     echo -e "${c_b}内置地方法:${c_x}"
     echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
     echo -e "${c_y}  remove_sh     # 删除别名或函数${c_x}"
