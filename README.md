@@ -15,3 +15,11 @@
       source "$func_file"
    done
    ```
+
+### windows
+
+重新加载配置文件的函数
+
+```shell
+   . $PROFILE
+```
