@@ -26,3 +26,20 @@ remove_sh() {
         fi
     done
 }
+
+helpsh() {
+    echo -e "${c_b}内置地方法:${c_x}"
+    echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
+    echo -e "${c_y}  remove_sh     # 删除别名或函数${c_x}"
+    echo -e "${c_y}  type          # 查看 cd_ 方法是否存在${c_x}"
+    echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
+    echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
+    echo -e ""
+    echo -e "${c_b}git相关操作:${c_x}"
+    echo -e "${c_y}  gs            # git status${c_x}"
+    echo -e "${c_y}  gcmt          # git commit -m${c_x}"
+    echo -e "${c_y}  ga            # git add${c_x}"
+    echo -e "${c_y}  gpr           # git pull${c_x}"
+    echo -e "${c_y}  gpo           # git push${c_x}"
+    echo -e "${c_y}  greset        # git reset --hard${c_x}"
+}
