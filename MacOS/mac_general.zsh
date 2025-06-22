@@ -34,7 +34,6 @@ hsh() {
     echo -e "${c_y}  type          # 查看 cd_ 方法是否存在${c_x}"
     echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
     echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
-    echo -e ""
     echo -e "${c_b}git相关操作:${c_x}"
     echo -e "${c_y}  gs            # git status${c_x}"
     echo -e "${c_y}  gcmt          # git commit -m${c_x}"
