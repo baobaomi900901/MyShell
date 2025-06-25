@@ -1,7 +1,7 @@
 ﻿# 生效脚本
 # . $PROFILE 
 
-function helpsh {
+function hsh {
     Write-Host "内置方法:" -ForegroundColor Blue
     Write-Host "  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
     Write-Host "  remove_sh     # 删除别名或函数" -ForegroundColor Yellow
@@ -67,7 +67,7 @@ function remove_sh {
 
 
 # 添加到您的 PowerShell Profile
-function type {
+function type_ {
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Name
