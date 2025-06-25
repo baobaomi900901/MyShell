@@ -15,11 +15,30 @@
       source "$func_file"
    done
    ```
+3. 在终端中运行, 使配置生效 ( 此命令用于 reload 脚本)
+   ```shell
+   source ~/.zshrc
+   ```
 
 ### windows
 
-重新加载配置文件的函数
+1. 找到这个目录 C:\Users\Admin\Documents\WindowsPowerShell
+2. 把 MyShell 放在这里目录下
+   ![alt text](assets/README/image.png)
 
-```shell
+3. 在 Microsoft.PowerShell_profile.ps1 中添加以下内容
+
+   ```shell
+   $functionsDir = "$PSScriptRoot\MyShell\windows"
+   if (Test-Path $functionsDir) {
+      Get-ChildItem "$functionsDir\*.ps1" | ForEach-Object {
+         . $_.FullName  # 点号表示在当前作用域执行脚本
+      }
+   }
+   ```
+
+4. 终端运行命令, 使配置生效 ( 此命令用于 reload 脚本)
+
+   ```shell
    . $PROFILE
-```
+   ```
