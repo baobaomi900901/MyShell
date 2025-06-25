@@ -19,6 +19,10 @@
    ```shell
    source ~/.zshrc
    ```
+4. 终端运行, 查看相关指令
+   ```shell
+   hsh
+   ```
 
 ### windows
 
@@ -41,4 +45,9 @@
 
    ```shell
    . $PROFILE
+   ```
+
+5. 终端运行, 查看相关指令
+   ```shell
+   hsh
    ```
