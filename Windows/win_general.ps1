@@ -5,7 +5,7 @@ function hsh {
     Write-Host "内置方法:" -ForegroundColor Blue
     Write-Host "  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
     Write-Host "  remove_sh     # 删除别名或函数" -ForegroundColor Yellow
-    Write-Host "  type          # 查看 cd_ 方法是否存在" -ForegroundColor Yellow
+    Write-Host "  type_         # 查看 cd_ 方法是否存在" -ForegroundColor Yellow
     Write-Host "  cd_           # 切换到指定目录" -ForegroundColor Yellow
     Write-Host "  code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
     Write-Host "  tool_         # 工具类指令" -ForegroundColor Yellow
