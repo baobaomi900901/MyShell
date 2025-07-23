@@ -8,7 +8,7 @@ function hsh {
     Write-Host "  type          # 查看 cd_ 方法是否存在" -ForegroundColor Yellow
     Write-Host "  cd_           # 切换到指定目录" -ForegroundColor Yellow
     Write-Host "  code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
-    Write-Host "  tool_        # 工具类指令" -ForegroundColor Yellow
+    Write-Host "  tool_         # 工具类指令" -ForegroundColor Yellow
     Write-Host "git相关操作:" -ForegroundColor Blue
     Write-Host "  gs            # git status" -ForegroundColor Yellow
     Write-Host "  gcmt          # git commit -m" -ForegroundColor Yellow
