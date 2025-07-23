@@ -1,4 +1,4 @@
-﻿function tools_ {
+﻿function tool_ {
     param (
         [Parameter(Position = 0)]
         [ArgumentCompleter({
