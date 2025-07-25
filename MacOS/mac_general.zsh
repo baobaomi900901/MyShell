@@ -27,11 +27,21 @@ remove_sh() {
     done
 }
 
+type_() {
+    if [ $# -eq 0 ]; then
+        echo "用法: type_ <name1>"
+        echo "查看是否有指定名称的函数或别名."
+        return 1
+    fi
+    type "$@"
+}
+
 hsh() {
     echo -e "${c_b}内置地方法:${c_x}"
     echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
     echo -e "${c_y}  remove_sh     # 删除别名或函数${c_x}"
-    echo -e "${c_y}  type          # 查看 cd_ 方法是否存在${c_x}"
+    echo -e "${c_y}  type_         # 查看 cd_ 方法是否存在${c_x}"
+    echo -e "${c_y}  reloadsh      # 重载自定义shell配置文件${c_x}"
     echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
     echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
     echo -e "${c_b}git相关操作:${c_x}"
