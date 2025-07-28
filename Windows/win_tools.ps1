@@ -59,12 +59,12 @@
                 # Write-Host "当前脚本所在路径: $scriptPath" -ForegroundColor Cyan
                 # 3. 找到脚本路径
                 $toolsPath = Join-Path $scriptPath "../_tools"
-                $nodeScriptPath = Join-Path $toolsPath "filterUnusedImages.js"
+                $nodeScriptPath = Join-Path $toolsPath "cleanUnusedImages.js"
                 # Write-Host "cleanimage脚本所在路径: $nodeScriptPath" -ForegroundColor Cyan
 
                 # 检查Node.js脚本是否存在
                 if (-not (Test-Path $nodeScriptPath)) {
-                    Write-Host "找不到 filterUnusedImages.js 脚本: $nodeScriptPath" -ForegroundColor Red
+                    Write-Host "找不到 cleanUnusedImages.js 脚本: $nodeScriptPath" -ForegroundColor Red
                     return
                 }
 

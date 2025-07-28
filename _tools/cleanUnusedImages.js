@@ -1,5 +1,5 @@
 /*
- *  项目名称: filterUnusedImages
+ *  项目名称: cleanUnusedImages
  *  用途: 过滤 .md中 未使用的图片资源
  *  作者: RengarTang
  *  创建时间: 2020/6/8 10:00
