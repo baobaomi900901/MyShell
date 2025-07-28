@@ -3,7 +3,7 @@
         [Parameter(Position = 0)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('buildlite','cleanimage')
+            $validActions = @('build-lite','clean-image')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action,
@@ -13,7 +13,7 @@
     )
 
     switch ($action) {
-        "buildlite" {
+        "build-lite" {
             try {
                 # 1. 切换到 aom 目录
                 Write-Host "正在切换到 aom 目录..." -ForegroundColor Cyan
@@ -47,7 +47,7 @@
                 return
             }
         }
-        "cleanimage" {
+        "clean-image" {
             try {
                 # 将相对路径转换为绝对路径
                 $targetPath = Convert-Path $path
@@ -100,8 +100,8 @@
         }
         default {
             Write-Host "使用方法:" -ForegroundColor Blue
-            Write-Host "  buildlite      # 打包 KRPA Lite" -ForegroundColor Yellow
-            Write-Host "  cleanimage [路径] # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
+            Write-Host "  build-lite      # 打包 KRPA Lite" -ForegroundColor Yellow
+            Write-Host "  clean-image [路径] # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
             Write-Host "                # 默认路径为当前目录" -ForegroundColor Yellow
         }
     }
