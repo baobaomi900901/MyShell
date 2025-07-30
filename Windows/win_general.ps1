@@ -1,5 +1,9 @@
 ﻿# 生效脚本
 # . $PROFILE 
+# 查询所有自定义别名 
+# Get-Alias | Where-Object { $_.Options -eq "None" } | Select-Object Name, Definition
+# 查询所有自定义函数 
+# Get-ChildItem Function: | Select-Object Name, Definition
 
 function hsh {
     Write-Host "内置方法:" -ForegroundColor Blue
