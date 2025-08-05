@@ -13,6 +13,7 @@ function hsh {
     Write-Host "  cd_           # 切换到指定目录" -ForegroundColor Yellow
     Write-Host "  code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
     Write-Host "  tool_         # 工具类指令" -ForegroundColor Yellow
+    Write-Host "  op_           # 执行 open ." -ForegroundColor Yellow
     Write-Host "git相关操作:" -ForegroundColor Blue
     Write-Host "  gs            # git status" -ForegroundColor Yellow
     Write-Host "  gcmt          # git commit -m" -ForegroundColor Yellow
@@ -84,5 +85,22 @@ function type_ {
         Write-Host "✅ cd_ 方法存在" -ForegroundColor Green
     } else {
         Write-Host "❌ cd_ 方法不存在" -ForegroundColor Red
+    }
+}
+
+# 默认执行 open .
+function op_ {
+        param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Paths
+    )
+
+    if ($Paths.Count -eq 0) {
+        open .
+        Write-Host "执行 open ."
+    }
+    else {
+        open $Paths
+        Write-Host "执行 open $Paths"
     }
 }
