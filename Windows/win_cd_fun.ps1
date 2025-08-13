@@ -43,6 +43,10 @@ function cd_ {
             cd D:\Code\aom\KingAutomate\Licenses\LiteLicense
             Write-Host "Executed: cd D:\Code\aom\KingAutomate\Licenses\LiteLicense"
         }
+        "rpaLicense" {
+            cd D:\Code\aom\Tools\LicensesMake
+            Write-Host "Executed: cd D:\Code\aom\Tools\LicensesMake"
+        }
         "sb8" {
             cd D:\Code\storybook8
             Write-Host "Executed: cd D:\Code\storybook8"
@@ -64,7 +68,8 @@ function cd_ {
             Write-Host "  cd_ liteweb          # lite 前端代码" -ForegroundColor Yellow
             Write-Host "  cd_ litedoc          # lite 官网文档" -ForegroundColor Yellow
             Write-Host "  cd_ liteStudyDemo    # lite 学习Demo" -ForegroundColor Yellow
-            Write-Host "  cd_ liteLicense      # lite 授权文件, 添加启动参数 Kingauto,可以解除授权时间限制(默认2年)" -ForegroundColor Yellow
+            Write-Host "  cd_ liteLicense      # lite 授权文件" -ForegroundColor Yellow
+            Write-Host "  cd_ rpaLicense       # rpa 授权文件" -ForegroundColor Yellow
             Write-Host "  cd_ sb8              # storybook8" -ForegroundColor Yellow
             Write-Host "  cd_ kswux            # KSW组件库" -ForegroundColor Yellow
             Write-Host "  cd_ hotkey           # AHK热键脚本" -ForegroundColor Yellow
