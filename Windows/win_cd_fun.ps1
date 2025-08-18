@@ -4,7 +4,7 @@ function cd_ {
         [Parameter(Position = 0)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('aom', 'vcl', 'litebuild', 'liteapp', 'liteweb','litedoc','liteStudyDemo','liteLicense', 'sb8', 'kswux')
+            $validActions = @('aom', 'vcl', 'litebuild', 'liteapp', 'liteweb','litedoc','liteStudyDemo','liteLicense','rpaLicense', 'sb8', 'kswux')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action
@@ -40,12 +40,14 @@ function cd_ {
             Write-Host "Executed: cd D:\Code\rpalite-study-demo"
         }
         "liteLicense" {
-            cd D:\Code\aom\KingAutomate\Licenses\LiteLicense
-            Write-Host "Executed: cd D:\Code\aom\KingAutomate\Licenses\LiteLicense"
+            D:\Code\aom\KingAutomate\Licenses\LiteLicense\LiteLicense.exe
+            Set-Clipboard -Value "kingautomate"
+            Write-Host "已经打开, 密码: kingautomate, 已复制到剪贴板" -ForegroundColor Green
         }
         "rpaLicense" {
-            cd D:\Code\aom\Tools\LicensesMake
-            Write-Host "Executed: cd D:\Code\aom\Tools\LicensesMake"
+            D:\Code\aom\Tools\LicensesMake\LicensesMake.exe
+            Set-Clipboard -Value "kingswarekcaom"
+            Write-Host "已经打开, 密码: kingswarekcaom, 已复制到剪贴板" -ForegroundColor Green
         }
         "sb8" {
             cd D:\Code\storybook8
