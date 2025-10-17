@@ -42,12 +42,12 @@ function cd_ {
         "liteLicense" {
             D:\Code\aom\KingAutomate\Licenses\LiteLicense\LiteLicense.exe
             Set-Clipboard -Value "kingautomate"
-            Write-Host "已经打开, 密码: kingautomate, 已复制到剪贴板" -ForegroundColor Green
+            Write-Host "已经打开, 密码: kingautomate , 已复制到剪贴板" -ForegroundColor Green
         }
         "rpaLicense" {
             D:\Code\aom\Tools\LicensesMake\LicensesMake.exe
             Set-Clipboard -Value "kingswarekcaom"
-            Write-Host "已经打开, 密码: kingswarekcaom, 已复制到剪贴板" -ForegroundColor Green
+            Write-Host "已经打开, 密码: kingswarekcaom , 已复制到剪贴板" -ForegroundColor Green
         }
         "sb8" {
             cd D:\Code\storybook8
