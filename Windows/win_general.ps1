@@ -24,8 +24,9 @@ function hsh {
 }
 
 function setsh { 
-  code C:\Users\Admin\Documents\WindowsPowerShell\MyShell
-  Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \windows 文件夹下" -ForegroundColor Green
+  $shellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell"
+  code $shellPath
+  Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
 
 function remove_sh {
