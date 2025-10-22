@@ -29,6 +29,21 @@ function setsh {
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
 
+function reloadsh {
+    try {
+        # 重新加载配置文件
+        . $PROFILE
+        Write-Host "✅ PowerShell 配置文件已成功重新加载！" -ForegroundColor Green
+        
+        # 显示加载的函数数量（可选）
+        $functions = Get-ChildItem Function: | Where-Object { $_.Source -eq $PROFILE }
+        Write-Host "📁 已加载 $($functions.Count) 个自定义函数" -ForegroundColor Cyan
+    }
+    catch {
+        Write-Host "❌ 重新加载配置文件时出错: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
 function remove_sh {
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
@@ -69,6 +84,12 @@ function remove_sh {
         } else {
             Write-Host "❌ '$name' 删除失败（可能受保护）" -ForegroundColor Red
         }
+    }
+
+    # 如果成功删除了任何项目，则重新加载配置文件
+    if ($deletedAny) {
+        Write-Host "`n🔄 正在重新加载配置文件..." -ForegroundColor Cyan
+        reloadsh
     }
 }
 
