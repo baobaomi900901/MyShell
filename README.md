@@ -11,7 +11,7 @@
    - 在终端中执行 'cd ~'
 2. 在 .zshrc 中添加以下内容
    ```shell
-   for func_file in ~/MyShell/mac/*.zsh; do
+   for func_file in ~/MyShell/MacOS/*.zsh; do
       source "$func_file"
    done
    ```

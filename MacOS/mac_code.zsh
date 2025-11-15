@@ -29,10 +29,10 @@ code_() {
 # 定义 cd_ 的补全函数
 _code_completion() {
     local -a options=(
-        'lang-cn : 打开 CN 语言包'
-        'lang-en : 打开 EN 语言包'
-        'Error-message : 打开 错误信息'
-        'Alias : 打开 函数别名与设置'
+        'lang-cn:打开 CN 语言包'
+        'lang-en:打开 EN 语言包'
+        'Error-message:打开 错误信息'
+        'Alias:打开 函数别名与设置'
     )
     _describe 'code_ options' options
 }
