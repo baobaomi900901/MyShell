@@ -11,7 +11,9 @@ function reloadsh {
     Write-Host "reloadsh" -ForegroundColor Green
 
     # 定义一些变量
-    $jsonFile = "C:\Users\mobytang\Documents\WindowsPowerShell\MyShell\Windows\function_tracker.json"
+    $MyShellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
+    $WindowsPath = Join-Path $MyShellPath "Windows"
+    $jsonFile = Join-Path $WindowsPath "function_tracker.json"
     $oldFuncNames = @()
     $newFuncNames = @()
     $newAddFuncNames = @()
@@ -30,7 +32,8 @@ function reloadsh {
     # 步骤二, 循环获取 Windows\*.ps1 文件中的方法名称
     # Write-Host "📁 Loading functions from Windows\*.ps1:" -ForegroundColor Cyans
     $functionCount = 0
-    $scriptFiles = Get-ChildItem "C:\Users\mobytang\Documents\WindowsPowerShell\MyShell\Windows\*.ps1"
+    # $scriptFiles = Get-ChildItem "C:\Users\mobytang\Documents\WindowsPowerShell\MyShell\Windows\*.ps1"
+    $scriptFiles = Get-ChildItem (Join-Path $WindowsPath "*.ps1")
 
     foreach ($scriptFile in $scriptFiles) {
         # Write-Host "🔍 Scanning: $($scriptFile.Name)" -ForegroundColor Magenta
