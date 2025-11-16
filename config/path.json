@@ -1,4 +1,4 @@
-{
+﻿{
   "aom": {
     "win": "D:\\Code\\aom",
     "mac": "~/Documents/金智维/Code/aom",
@@ -34,6 +34,16 @@
     "mac": null,
     "description": "lite 学习Demo"
   },
+  "liteLicense": {
+    "win": "D:\\Code\\aom\\KingAutomate\\Licenses\\LiteLicense\\LiteLicense.exe",
+    "mac": null,
+    "description": "lite 授权文件"
+  },
+  "rpaLicense": {
+    "win": "D:\\Code\\aom\\Tools\\LicensesMake\\LicensesMake.exe",
+    "mac": null,
+    "description": "rpa 授权文件"
+  },
   "sb8": {
     "win": "D:\\Code\\storybook8",
     "mac": "~/Documents/金智维/Code/storybook8",
@@ -44,7 +54,7 @@
     "mac": "~/Documents/金智维/Code/storybook8/kswux",
     "description": "KSW组件库"
   },
-  "kswux-docs": {
+  "kswux_docs": {
     "win": null,
     "mac": "~/Documents/金智维/Code/storybook8/kswux/docs",
     "description": "KSWUX 文档目录"

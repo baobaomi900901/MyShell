@@ -1,82 +1,126 @@
 ﻿# MyShell\Windows\win_cd_fun.ps1
-
-# #项目
 function cd_ {
     param (
         [Parameter(Position = 0)]
-        [ArgumentCompleter({
-            param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('aom', 'vcl', 'litebuild', 'liteapp', 'liteweb','litedoc','liteStudyDemo','liteLicense','rpaLicense', 'sb8', 'kswux')
-            $validActions -like "$wordToComplete*"
-        })]
         [string]$action
     )
 
-    switch ($action) {
-        "aom" {
-            cd D:\Code\aom
-            Write-Host "Executed: cd D:\Code\aom"
-        }
-        "vcl" {
-            cd D:\Code\vcl
-            Write-Host "Executed: cd D:\Code\vcl"
-        }
-        "litebuild" {
-            cd D:\Code\aom\KingAutomate\Build\Build
-            Write-Host "Executed: cd D:\Code\aom\KingAutomate\Build\Build"
-        }
-        "liteapp" {
-            cd D:\Code\aom\KingAutomate
-            Write-Host "Executed: cd D:\Code\aom\KingAutomate"
-        }
-        "liteweb" {
-            cd D:\Code\aom\VueCodeBase\vue-king-automate
-            Write-Host "Executed: cd D:\Code\aom\VueCodeBase\vue-king-automate"
-        }
-        "litedoc" {
-            cd D:\Code\k-mate-docs
-            Write-Host "Executed: cd D:\Code\k-mate-docs"
-        }
-        "liteStudyDemo" {
-            cd D:\Code\rpalite-study-demo
-            Write-Host "Executed: cd D:\Code\rpalite-study-demo"
-        }
-        "liteLicense" {
-            D:\Code\aom\KingAutomate\Licenses\LiteLicense\LiteLicense.exe
-            Set-Clipboard -Value "kingautomate"
-            Write-Host "已经打开, 密码: kingautomate , 已复制到剪贴板" -ForegroundColor Green
-        }
-        "rpaLicense" {
-            D:\Code\aom\Tools\LicensesMake\LicensesMake.exe
-            Set-Clipboard -Value "kingswarekcaom"
-            Write-Host "已经打开, 密码: kingswarekcaom , 已复制到剪贴板" -ForegroundColor Green
-        }
-        "sb8" {
-            cd D:\Code\storybook8
-            Write-Host "Executed: cd D:\Code\storybook8"
-        }
-        "kswux" {
-            cd D:\Code\storybook8\kswux
-            Write-Host "Executed: cd D:\Code\storybook8\kswux"
-        }
-        "hotkey" {
-            cd D:\Program Files\AutoHotkey\MyHotkey
-            Write-Host "Executed: cd D:\Program Files\AutoHotkey\MyHotkey"
-        }
-        default {
-            Write-Host "使用方法:" -ForegroundColor Blue
-            Write-Host "  cd_ aom              # 研发一部代码" -ForegroundColor Yellow
-            Write-Host "  cd_ vcl              # 工具库" -ForegroundColor Yellow
-            Write-Host "  cd_ litebuild        # lite build 文件夹" -ForegroundColor Yellow   
-            Write-Host "  cd_ liteapp          # lite 后端代码" -ForegroundColor Yellow
-            Write-Host "  cd_ liteweb          # lite 前端代码" -ForegroundColor Yellow
-            Write-Host "  cd_ litedoc          # lite 官网文档" -ForegroundColor Yellow
-            Write-Host "  cd_ liteStudyDemo    # lite 学习Demo" -ForegroundColor Yellow
-            Write-Host "  cd_ liteLicense      # lite 授权文件" -ForegroundColor Yellow
-            Write-Host "  cd_ rpaLicense       # rpa 授权文件" -ForegroundColor Yellow
-            Write-Host "  cd_ sb8              # storybook8" -ForegroundColor Yellow
-            Write-Host "  cd_ kswux            # KSW组件库" -ForegroundColor Yellow
-            Write-Host "  cd_ hotkey           # AHK热键脚本" -ForegroundColor Yellow
-        }
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\path.json"
+    
+    if (-not (Test-Path $configFile)) {
+        Write-Host "错误: 配置文件不存在" -ForegroundColor Red
+        Write-Host "请手动创建: $configFile" -ForegroundColor Yellow
+        return
     }
+    
+    # 读取配置
+    try {
+        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+    } catch {
+        Write-Host "错误: 配置文件格式错误" -ForegroundColor Red
+        return
+    }
+    
+    # 显示帮助
+    if (-not $action) {
+        Write-Host "快速目录跳转" -ForegroundColor Cyan
+        Write-Host "用法: cd_ <名称>" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "可用目录:" -ForegroundColor Green
+        
+        $config.PSObject.Properties | ForEach-Object {
+            $key = $_.Name
+            $item = $_.Value
+            if ($item.win -and $item.win -ne $null) {
+                $displayName = $key -replace '_', '-'
+                Write-Host "  $displayName" -ForegroundColor Yellow -NoNewline
+                Write-Host " - $($item.description)"
+            }
+        }
+        return
+    }
+    
+    # 处理用户输入
+    $internalAction = $action -replace '-', '_'
+    
+    if (-not $config.$internalAction) {
+        Write-Host "错误: 目录 '$action' 不存在" -ForegroundColor Red
+        return
+    }
+    
+    $item = $config.$internalAction
+    $targetPath = $item.win
+    
+    if (-not $targetPath -or $targetPath -eq $null) {
+        Write-Host "错误: 目录 '$action' 在 Windows 上未配置" -ForegroundColor Red
+        return
+    }
+    
+    # 特殊处理许可证工具
+    if ($internalAction -eq "liteLicense" -or $internalAction -eq "rpaLicense") {
+        if (Test-Path $targetPath) {
+            & $targetPath
+            $password = if ($internalAction -eq "liteLicense") { "kingautomate" } else { "kingswarekcaom" }
+            Set-Clipboard -Value $password
+            Write-Host "已打开 $action, 密码: $password (已复制)" -ForegroundColor Green
+        } else {
+            Write-Host "错误: 文件不存在 - $targetPath" -ForegroundColor Red
+        }
+        return
+    }
+    
+    # 普通目录切换
+    if (Test-Path $targetPath) {
+        Set-Location $targetPath
+        Write-Host "已切换到 $action" -ForegroundColor Green
+    } else {
+        Write-Host "错误: 目录不存在 - $targetPath" -ForegroundColor Red
+    }
+}
+
+# Tab 补全功能
+Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\path.json"
+    
+    if (-not (Test-Path $configFile)) {
+        return
+    }
+    
+    try {
+        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        
+        # 获取所有可用的 Windows 路径名称
+        $completionItems = $config.PSObject.Properties | Where-Object {
+            $_.Value.win -and $_.Value.win -ne $null
+        } | ForEach-Object {
+            # 将内部的下划线键名转换回用户友好的连字符格式
+            $displayName = $_.Name -replace '_', '-'
+            $description = $_.Value.description
+            
+            # 创建补全项
+            [System.Management.Automation.CompletionResult]::new(
+                $displayName,                    # 补全文本
+                $displayName,                    # 列表文本
+                'ParameterValue',                # 结果类型
+                $description                     # 工具提示
+            )
+        }
+        
+        # 根据当前输入过滤补全项
+        $completionItems | Where-Object {
+            $_.CompletionText -like "$wordToComplete*"
+        }
+        
+    } catch {
+        # 如果解析失败，返回空结果
+        return
+    }
+}
+
+# 简单的编辑命令
+function edit-cd-config {
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\path.json"
+    code $configFile
 }
