@@ -1,4 +1,6 @@
-﻿# #项目
+﻿# MyShell\Windows\win_cd_fun.ps1
+
+# #项目
 function cd_ {
     param (
         [Parameter(Position = 0)]

@@ -1,0 +1,12 @@
+{
+  "aom": {
+    "win": "D:\\Code\\aom",
+    "mac": "~/Documents/金智维/Code/aom",
+    "Description": "ksw 一部项目路径"
+  },
+  "vcl": {
+    "win": "D:\\Code\\vcl",
+    "mac": null,
+    "Description": "ksw 工具集"
+  }
+}
