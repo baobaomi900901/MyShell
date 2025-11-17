@@ -163,3 +163,15 @@ hsh() {
     echo -e "${c_y}  gpo           # git push${c_x}"
     echo -e "${c_y}  greset        # git reset --hard${c_x}"
 }
+
+now_() {
+    # 获取当前日期时间，格式：20251117-10:10
+    local current_time=$(date "+%Y%m%d-%H:%M")
+    echo -e "${c_g}$current_time${c_x}"
+    
+    # 可选：复制到剪贴板（macOS）
+    if command -v pbcopy &> /dev/null; then
+        echo -n "$current_time" | pbcopy
+        echo -e "${c_y}✅ 时间已复制到剪贴板${c_x}"
+    fi
+}
