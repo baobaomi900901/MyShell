@@ -183,3 +183,28 @@ function op_ {
         Write-Host "执行 open $Paths"
     }
 }
+
+function now_ {
+    param(
+        [string]$format = "default"
+    )
+    
+    switch ($format) {
+        "full" {
+            $currentTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        }
+        "file" {
+            $currentTime = Get-Date -Format "yyyyMMdd_HHmmss"
+        }
+        "time" {
+            $currentTime = Get-Date -Format "HH:mm:ss"
+        }
+        default {
+            $currentTime = Get-Date -Format "yyyyMMdd-HH:mm"
+        }
+    }
+    
+    Write-Host $currentTime -ForegroundColor Green
+    $currentTime | Set-Clipboard
+    Write-Host "✅ 时间已复制到剪贴板" -ForegroundColor Cyan
+}
