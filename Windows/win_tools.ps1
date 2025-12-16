@@ -3,7 +3,7 @@
         [Parameter(Position = 0)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('build-lite','clean-image')
+            $validActions = @('build-lite','clean-image','lite_alias')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action,
@@ -98,11 +98,74 @@
                 Write-Error $_
             }
         }
+        "lite_alias" {
+            try {
+                if ([string]::IsNullOrWhiteSpace($path) -or $path -eq ".") {
+                    Write-Host "请提供要转换的字符串，例如: tool_ lite_alias Data.ExtractContentFromTextV4" -ForegroundColor Yellow
+                    return
+                }
+
+                $inputString = $path
+                
+                # 转换规则：
+                # 1. 添加前缀 "RPA"
+                # 2. 去掉所有点（.）
+                # 3. 去掉最后的版本号（V后跟数字，不区分大小写）
+                
+                # 步骤1: 去掉点号
+                $step1 = $inputString -replace '\.', ''
+                
+                # 步骤2: 去掉最后的版本号（V/v后跟数字，如V4、v2等）
+                $step2 = $step1 -replace '[Vv]\d+$', ''
+                
+                # 步骤3: 添加前缀 "RPA"
+                $result = "RPA" + $step2
+                
+                # 创建输出字符串（适合嵌入到现有JSON中的格式）
+                # 使用4空格缩进，这是JSON常见的缩进格式
+                $outputText = @"
+    "$result":  {
+        "alias":  []
+    }
+"@
+                
+                Write-Host "`n输出JSON的格式:" -ForegroundColor Cyan
+                Write-Host $outputText -ForegroundColor Green
+                
+                # 尝试复制到剪贴板
+                try {
+                    # 方法1: 使用Set-Clipboard（PowerShell 5.0+）
+                    if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
+                        $outputText | Set-Clipboard
+                        Write-Host "嵌入格式已复制到剪贴板" -ForegroundColor Green
+                    }
+                    # 方法2: 使用.NET方法（兼容性更好）
+                    elseif ([System.Windows.Forms.Clipboard]::GetText) {
+                        Add-Type -AssemblyName System.Windows.Forms
+                        [System.Windows.Forms.Clipboard]::SetText($outputText)
+                        Write-Host "嵌入格式已复制到剪贴板" -ForegroundColor Green
+                    }
+                }
+                catch {
+                    # 如果复制失败，只是提示，不影响主要功能
+                    Write-Host "无法复制到剪贴板，请手动复制结果" -ForegroundColor Yellow
+                }
+            }
+            catch {
+                Write-Error $_
+            }
+        }
         default {
             Write-Host "使用方法:" -ForegroundColor Blue
-            Write-Host "  build-lite      # 打包 KRPA Lite" -ForegroundColor Yellow
-            Write-Host "  clean-image [路径] # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
-            Write-Host "                # 默认路径为当前目录" -ForegroundColor Yellow
+            Write-Host "  build-lite                   # 打包 KRPA Lite" -ForegroundColor Yellow
+            Write-Host "  clean-image [路径]          # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
+            Write-Host "                             # 默认路径为当前目录" -ForegroundColor Yellow
+            Write-Host "  lite_alias <字符串>         # 转换字符串为RPA别名格式并生成适合嵌入JSON的格式" -ForegroundColor Yellow
+            Write-Host "                             # 示例: Data.ExtractContentFromTextV4" -ForegroundColor Yellow
+            Write-Host '                             # 输出:' -ForegroundColor DarkGray
+            Write-Host '    "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
+            Write-Host '        "alias":  []' -ForegroundColor DarkGray
+            Write-Host '    }' -ForegroundColor DarkGray
         }
     }
 }
