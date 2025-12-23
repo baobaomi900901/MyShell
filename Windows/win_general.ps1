@@ -144,7 +144,7 @@ function hsh {
 }
 
 function setsh { 
-  $shellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell"
+  $shellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
   code $shellPath
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
