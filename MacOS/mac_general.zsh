@@ -175,3 +175,31 @@ now_() {
         echo -e "${c_y}✅ 时间已复制到剪贴板${c_x}"
     fi
 }
+
+myip_() {
+  # 尝试多个常见的网络接口
+  local interfaces=("en0" "en1" "en2" "eth0")
+  local ip_address=""
+  
+  for interface in "${interfaces[@]}"; do
+    ip_address=$(ifconfig $interface 2>/dev/null | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}')
+    if [ -n "$ip_address" ]; then
+      break
+    fi
+  done
+  
+  # 如果还是没找到，尝试其他方法
+  if [ -z "$ip_address" ]; then
+    ip_address=$(ipconfig getifaddr en0 2>/dev/null)
+  fi
+  
+  if [ -z "$ip_address" ]; then
+    echo "无法获取IP地址"
+    return 1
+  fi
+  
+  # 复制到剪贴板（不带换行符）
+  printf "%s" "$ip_address" | pbcopy
+  
+  echo "✅ IP地址已复制到剪贴板: $ip_address"
+}
