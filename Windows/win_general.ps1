@@ -134,6 +134,7 @@ function hsh {
     Write-Host "  code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
     Write-Host "  tool_         # 工具类指令" -ForegroundColor Yellow
     Write-Host "  op_           # 执行 open ." -ForegroundColor Yellow
+    Write-Host "  new_          # 新建文件夹或文件 " -ForegroundColor Yellow
     Write-Host "git相关操作:" -ForegroundColor Blue
     Write-Host "  gs            # git status" -ForegroundColor Yellow
     Write-Host "  gcmt          # git commit -m" -ForegroundColor Yellow
@@ -208,3 +209,37 @@ function now_ {
     $currentTime | Set-Clipboard
     Write-Host "✅ 时间已复制到剪贴板" -ForegroundColor Cyan
 }
+
+function new_ {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Name
+    )
+    
+    # 检查名称是否包含扩展名（包含点且点不在开头）
+    if ($Name -match '^(?!\.)[^\.]+\.[^\.]+$') {
+        # 创建文件
+        $null = New-Item -Path $Name -ItemType File -Force
+        Write-Host "文件创建成功: $Name" -ForegroundColor Green
+    }
+    elseif ($Name -match '\.') {
+        # 处理特殊情况：以点开头的隐藏文件或文件夹
+        if ($Name -match '^\.') {
+            $null = New-Item -Path $Name -ItemType File -Force
+            Write-Host "文件创建成功: $Name" -ForegroundColor Green
+        }
+        else {
+            # 包含点但不是有效文件格式，作为文件夹创建
+            $null = New-Item -Path $Name -ItemType Directory -Force
+            Write-Host "文件夹创建成功: $Name" -ForegroundColor Green
+        }
+    }
+    else {
+        # 创建文件夹
+        $null = New-Item -Path $Name -ItemType Directory -Force
+        Write-Host "文件夹创建成功: $Name" -ForegroundColor Green
+    }
+}
+
+# 设置命令别名（可选）
+Set-Alias -Name new -Value new_ -Force
