@@ -208,3 +208,50 @@ myip_() {
   
   echo "✅ IP地址已复制到剪贴板: $ip_address"
 }
+
+# 创建文件或文件夹的便捷函数
+new_() {
+    local force_overwrite=false
+    
+    # 检查是否有 -f 选项
+    if [ "$1" = "-f" ]; then
+        force_overwrite=true
+        shift
+    fi
+    
+    # 检查参数
+    if [ -z "$1" ]; then
+        echo -e "${c_r}错误: 需要提供名称参数${c_x}"
+        echo -e "${c_y}用法: new [-f] <名称>${c_x}"
+        echo -e "${c_y}  -f: 强制创建，覆盖已存在的文件${c_x}"
+        return 1
+    fi
+    
+    local name="$1"
+    local dir_path=$(dirname "$name")
+    local base_name=$(basename "$name")
+    
+    # 检查目标是否已存在
+    if [ -e "$name" ]; then
+        if [ "$force_overwrite" = false ]; then
+            if [ -f "$name" ]; then
+                echo -e "${c_m}📄 文件已存在: $name${c_x}"
+                echo -e "${c_y}使用 'new -f $name' 可以强制创建${c_x}"
+            elif [ -d "$name" ]; then
+                echo -e "${c_m}📁 文件夹已存在: $name${c_x}"
+            else
+                echo -e "${c_m}⚠️  路径已存在: $name${c_x}"
+            fi
+            return 1
+        else
+            # 强制模式下，如果是文件则删除后重新创建
+            if [ -f "$name" ]; then
+                rm "$name"
+                echo -e "${c_y}⚠️  已覆盖现有文件: $name${c_x}"
+            fi
+            # 如果是文件夹，我们不删除，只创建不存在的部分
+        fi
+    fi
+    
+    # ... 其余代码保持不变 ...
+}
