@@ -213,33 +213,88 @@ function now_ {
 function new_ {
     param(
         [Parameter(Mandatory=$true)]
-        [string]$Name
+        [string]$Name,
+        [switch]$Force
     )
     
+    # 检查路径是否已存在
+    if (Test-Path $Name) {
+        if ((Get-Item $Name) -is [System.IO.DirectoryInfo]) {
+            if ($Force) {
+                Write-Host "⚠️  文件夹已存在，跳过创建: $Name" -ForegroundColor Yellow
+                return
+            } else {
+                Write-Host "📁 文件夹已存在: $Name" -ForegroundColor Red
+                Write-Host "使用 'new -Force $Name' 可以强制创建" -ForegroundColor Yellow
+                return
+            }
+        } elseif ((Get-Item $Name) -is [System.IO.FileInfo]) {
+            if ($Force) {
+                Remove-Item $Name -Force -ErrorAction SilentlyContinue
+                Write-Host "⚠️  已删除并重新创建文件: $Name" -ForegroundColor Yellow
+            } else {
+                Write-Host "📄 文件已存在: $Name" -ForegroundColor Red
+                Write-Host "使用 'new -Force $Name' 可以强制创建" -ForegroundColor Yellow
+                return
+            }
+        } else {
+            Write-Host "⚠️  路径已存在: $Name" -ForegroundColor Red
+            return
+        }
+    }
+    
+    # 提取目录路径和基本名称
+    $dir_path = Split-Path $Name -Parent
+    $base_name = Split-Path $Name -Leaf
+    
+    # 创建必要的父目录
+    if ($dir_path -and $dir_path -ne ".") {
+        try {
+            New-Item -Path $dir_path -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        } catch {
+            Write-Host "❌ 无法创建目录: $dir_path" -ForegroundColor Red
+            return
+        }
+    }
+    
     # 检查名称是否包含扩展名（包含点且点不在开头）
-    if ($Name -match '^(?!\.)[^\.]+\.[^\.]+$') {
+    if ($base_name -match '^[^.]+[.].+$') {
         # 创建文件
-        $null = New-Item -Path $Name -ItemType File -Force
-        Write-Host "文件创建成功: $Name" -ForegroundColor Green
-    }
-    elseif ($Name -match '\.') {
+        try {
+            New-Item -Path $Name -ItemType File -ErrorAction Stop | Out-Null
+            Write-Host "✅ 文件创建成功: $Name" -ForegroundColor Green
+        } catch {
+            Write-Host "❌ 无法创建文件: $Name" -ForegroundColor Red
+        }
+    } elseif ($base_name -match '\.') {
         # 处理特殊情况：以点开头的隐藏文件或文件夹
-        if ($Name -match '^\.') {
-            $null = New-Item -Path $Name -ItemType File -Force
-            Write-Host "文件创建成功: $Name" -ForegroundColor Green
-        }
-        else {
+        if ($base_name -match '^\.') {
+            # 创建文件
+            try {
+                New-Item -Path $Name -ItemType File -ErrorAction Stop | Out-Null
+                Write-Host "✅ 文件创建成功: $Name" -ForegroundColor Green
+            } catch {
+                Write-Host "❌ 无法创建文件: $Name" -ForegroundColor Red
+            }
+        } else {
             # 包含点但不是有效文件格式，作为文件夹创建
-            $null = New-Item -Path $Name -ItemType Directory -Force
-            Write-Host "文件夹创建成功: $Name" -ForegroundColor Green
+            try {
+                New-Item -Path $Name -ItemType Directory -ErrorAction Stop | Out-Null
+                Write-Host "✅ 文件夹创建成功: $Name" -ForegroundColor Blue
+            } catch {
+                Write-Host "❌ 无法创建文件夹: $Name" -ForegroundColor Red
+            }
         }
-    }
-    else {
+    } else {
         # 创建文件夹
-        $null = New-Item -Path $Name -ItemType Directory -Force
-        Write-Host "文件夹创建成功: $Name" -ForegroundColor Green
+        try {
+            New-Item -Path $Name -ItemType Directory -ErrorAction Stop | Out-Null
+            Write-Host "✅ 文件夹创建成功: $Name" -ForegroundColor Blue
+        } catch {
+            Write-Host "❌ 无法创建文件夹: $Name" -ForegroundColor Red
+        }
     }
 }
 
-# 设置命令别名（可选）
+# 设置命令别名
 Set-Alias -Name new -Value new_ -Force
