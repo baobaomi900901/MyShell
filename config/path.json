@@ -68,5 +68,10 @@
     "win": "C:\\Users\\mobytang\\Documents\\WindowsPowerShell\\MyShell",
     "mac": "/Users/mobytang/MyShell",
     "description": "MyShell 配置目录"
+  },
+  "pywinauto": {
+    "win": "D:\\pywinauto",
+    "mac": null,
+    "description": "pywinauto 学习"
   }
 }
