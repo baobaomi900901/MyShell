@@ -31,7 +31,7 @@
   },
   "liteStudyDemo": {
     "win": "D:\\Code\\rpalite-study-demo",
-    "mac": null,
+    "mac": "~/Documents/金智维/Code/rpalite-study-demo",
     "description": "lite 学习Demo"
   },
   "liteLicense": {
