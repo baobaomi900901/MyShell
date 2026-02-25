@@ -71,7 +71,7 @@
   },
   "pywinauto": {
     "win": "D:\\pywinauto",
-    "mac": "/Volumes/[D] Windows 11/pywinauto",
+    "mac": "/Users/mobytang/Documents/RengarTang/code/study_pywinauto",
     "description": "pywinauto 学习"
   }
 }
