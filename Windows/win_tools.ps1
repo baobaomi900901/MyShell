@@ -158,7 +158,7 @@
             }
 
             if ($root) {
-                # 从密码文件中读取 lite-forever 密码
+                # 从密码文件中读取 lite-forever 密码（仅用于验证，不用于复制）
                 $passwordFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\password.json"
                 if (-not (Test-Path $passwordFile)) {
                     Write-Host "错误: 密码文件不存在 - $passwordFile" -ForegroundColor Red
@@ -175,7 +175,7 @@
 
                 $liteForever = $passwordConfig.'lite-forever'
                 if (-not $liteForever -or [string]::IsNullOrEmpty($liteForever.password)) {
-                    Write-Host "错误: 密码文件中未找到 'lite-forever' 的有效密码。" -ForegroundColor Red
+                    Write-Host "错误: 密码文件(config/password.json)中未找到 'lite-forever' 的有效密码。" -ForegroundColor Red
                     Write-Host "请确保文件包含以下结构：" -ForegroundColor Yellow
                     Write-Host '{' -ForegroundColor Yellow
                     Write-Host '  "lite-forever": {' -ForegroundColor Yellow
@@ -186,8 +186,10 @@
                     return
                 }
 
-                $password = $liteForever.password
+                # 密码验证通过，启动程序并传递参数
                 & $targetPath "kingauto"
+                # 无论是否带 -root，复制到剪贴板的密码都是 kingautomate
+                $password = "kingautomate"
                 Set-Clipboard -Value $password
                 Write-Host "已打开 LiteLicense（带参数），密码: $password (已复制)" -ForegroundColor Green
             } else {
@@ -221,7 +223,7 @@
             Write-Host '                                 #     "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
             Write-Host '                                 #         "alias":  []' -ForegroundColor DarkGray
             Write-Host '                                 #     }' -ForegroundColor DarkGray
-            Write-Host "  license-lite [-root]           # 打开 Lite 授权工具，-root 时从密码文件读取 'lite-forever' 密码并传递参数" -ForegroundColor Yellow
+            Write-Host "  license-lite [-root]           # 打开 Lite 授权工具，-root 时传递 'kingauto' 参数（密码仍为普通密码）" -ForegroundColor Yellow
             Write-Host "  license-rpa                    # 打开 RPA 授权工具" -ForegroundColor Yellow
         }
     }
