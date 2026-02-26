@@ -3,13 +3,15 @@
         [Parameter(Position = 0)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('build-lite','clean-image','lite_alias')
+            $validActions = @('build-lite','clean-image','lite_alias','license-lite','license-rpa')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action,
 
         [Parameter(Position = 1, Mandatory = $false)]
-        [string]$path = "."  # 默认当前目录
+        [string]$path = ".",  # 默认当前目录
+
+        [switch]$root  # 仅用于 license-lite
     )
 
     switch ($action) {
@@ -52,15 +54,10 @@
                 # 将相对路径转换为绝对路径
                 $targetPath = Convert-Path $path
                 
-                # 1. 打印目标路径
-                # Write-Host "目标清理路径: $targetPath" -ForegroundColor Cyan
-                # 2. 打印当前脚本所在路径
+                # 找到脚本路径
                 $scriptPath = $PSScriptRoot
-                # Write-Host "当前脚本所在路径: $scriptPath" -ForegroundColor Cyan
-                # 3. 找到脚本路径
                 $toolsPath = Join-Path $scriptPath "../_tools"
                 $nodeScriptPath = Join-Path $toolsPath "cleanUnusedImages.js"
-                # Write-Host "cleanimage脚本所在路径: $nodeScriptPath" -ForegroundColor Cyan
 
                 # 检查Node.js脚本是否存在
                 if (-not (Test-Path $nodeScriptPath)) {
@@ -122,7 +119,6 @@
                 $result = "RPA" + $step2
                 
                 # 创建输出字符串（适合嵌入到现有JSON中的格式）
-                # 使用4空格缩进，这是JSON常见的缩进格式
                 $outputText = @"
     "$result":  {
         "alias":  []
@@ -134,12 +130,10 @@
                 
                 # 尝试复制到剪贴板
                 try {
-                    # 方法1: 使用Set-Clipboard（PowerShell 5.0+）
                     if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
                         $outputText | Set-Clipboard
                         Write-Host "嵌入格式已复制到剪贴板" -ForegroundColor Green
                     }
-                    # 方法2: 使用.NET方法（兼容性更好）
                     elseif ([System.Windows.Forms.Clipboard]::GetText) {
                         Add-Type -AssemblyName System.Windows.Forms
                         [System.Windows.Forms.Clipboard]::SetText($outputText)
@@ -147,7 +141,6 @@
                     }
                 }
                 catch {
-                    # 如果复制失败，只是提示，不影响主要功能
                     Write-Host "无法复制到剪贴板，请手动复制结果" -ForegroundColor Yellow
                 }
             }
@@ -155,17 +148,81 @@
                 Write-Error $_
             }
         }
+        "license-lite" {
+            # 处理 lite 授权工具（路径硬编码）
+            $targetPath = "D:\Code\aom\KingAutomate\Licenses\LiteLicense\LiteLicense.exe"
+            
+            if (-not (Test-Path $targetPath)) {
+                Write-Host "错误: 文件不存在 - $targetPath" -ForegroundColor Red
+                return
+            }
+
+            if ($root) {
+                # 从密码文件中读取 lite-forever 密码
+                $passwordFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\password.json"
+                if (-not (Test-Path $passwordFile)) {
+                    Write-Host "错误: 密码文件不存在 - $passwordFile" -ForegroundColor Red
+                    Write-Host "请创建该文件并添加 'lite-forever' 密码后再使用 -root 参数。" -ForegroundColor Yellow
+                    return
+                }
+                
+                try {
+                    $passwordConfig = Get-Content $passwordFile -Raw | ConvertFrom-Json
+                } catch {
+                    Write-Host "错误: 密码文件格式错误，请检查 JSON 语法。" -ForegroundColor Red
+                    return
+                }
+
+                $liteForever = $passwordConfig.'lite-forever'
+                if (-not $liteForever -or [string]::IsNullOrEmpty($liteForever.password)) {
+                    Write-Host "错误: 密码文件中未找到 'lite-forever' 的有效密码。" -ForegroundColor Red
+                    Write-Host "请确保文件包含以下结构：" -ForegroundColor Yellow
+                    Write-Host '{' -ForegroundColor Yellow
+                    Write-Host '  "lite-forever": {' -ForegroundColor Yellow
+                    Write-Host '    "password": "your_password",' -ForegroundColor Yellow
+                    Write-Host '    "description": "lite永久授权"' -ForegroundColor Yellow
+                    Write-Host '  }' -ForegroundColor Yellow
+                    Write-Host '}' -ForegroundColor Yellow
+                    return
+                }
+
+                $password = $liteForever.password
+                & $targetPath "kingauto"
+                Set-Clipboard -Value $password
+                Write-Host "已打开 LiteLicense（带参数），密码: $password (已复制)" -ForegroundColor Green
+            } else {
+                # 无 -root：使用原硬编码密码
+                & $targetPath
+                $password = "kingautomate"
+                Set-Clipboard -Value $password
+                Write-Host "已打开 LiteLicense，密码: $password (已复制)" -ForegroundColor Green
+            }
+        }
+        "license-rpa" {
+            # 处理 RPA 授权工具（路径硬编码）- 忽略 -root 参数，始终不带附加参数
+            $targetPath = "D:\Code\aom\Tools\LicensesMake\LicensesMake.exe"
+            if (Test-Path $targetPath) {
+                & $targetPath   # 直接运行，不附加参数
+                $password = "kingswarekcaom"
+                Set-Clipboard -Value $password
+                Write-Host "已打开 RPALicense，密码: $password (已复制)" -ForegroundColor Green
+            } else {
+                Write-Host "错误: 文件不存在 - $targetPath" -ForegroundColor Red
+            }
+        }
         default {
             Write-Host "使用方法:" -ForegroundColor Blue
-            Write-Host "  build-lite                   # 打包 KRPA Lite" -ForegroundColor Yellow
-            Write-Host "  clean-image [路径]          # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
-            Write-Host "                             # 默认路径为当前目录" -ForegroundColor Yellow
-            Write-Host "  lite_alias <字符串>         # 转换字符串为RPA别名格式并生成适合嵌入JSON的格式" -ForegroundColor Yellow
-            Write-Host "                             # 示例: Data.ExtractContentFromTextV4" -ForegroundColor Yellow
-            Write-Host '                             # 输出:' -ForegroundColor DarkGray
-            Write-Host '    "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
-            Write-Host '        "alias":  []' -ForegroundColor DarkGray
-            Write-Host '    }' -ForegroundColor DarkGray
+            Write-Host "  build-lite                     # 打包 KRPA Lite" -ForegroundColor Yellow
+            Write-Host "  clean-image [路径]             # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
+            Write-Host "                                 # 默认路径为当前目录" -ForegroundColor Yellow
+            Write-Host "  lite_alias <字符串>            # 转换字符串为RPA别名格式并生成适合嵌入JSON的格式" -ForegroundColor Yellow
+            Write-Host "                                 # 示例: Data.ExtractContentFromTextV4" -ForegroundColor Yellow
+            Write-Host "                                 # 输出:" -ForegroundColor DarkGray
+            Write-Host '                                 #     "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
+            Write-Host '                                 #         "alias":  []' -ForegroundColor DarkGray
+            Write-Host '                                 #     }' -ForegroundColor DarkGray
+            Write-Host "  license-lite [-root]           # 打开 Lite 授权工具，-root 时从密码文件读取 'lite-forever' 密码并传递参数" -ForegroundColor Yellow
+            Write-Host "  license-rpa                    # 打开 RPA 授权工具" -ForegroundColor Yellow
         }
     }
 }

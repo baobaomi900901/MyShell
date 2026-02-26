@@ -1,5 +1,4 @@
-﻿# MyShell\Windows\win_cd_fun.ps1
-function cd_ {
+﻿function cd_ {
     param (
         [Parameter(Position = 0)]
         [string]$action
@@ -56,29 +55,21 @@ function cd_ {
         return
     }
     
-    # 特殊处理许可证工具
-    if ($internalAction -eq "liteLicense" -or $internalAction -eq "rpaLicense") {
-        if (Test-Path $targetPath) {
-            & $targetPath
-            $password = if ($internalAction -eq "liteLicense") { "kingautomate" } else { "kingswarekcaom" }
-            Set-Clipboard -Value $password
-            Write-Host "已打开 $action, 密码: $password (已复制)" -ForegroundColor Green
-        } else {
-            Write-Host "错误: 文件不存在 - $targetPath" -ForegroundColor Red
-        }
-        return
-    }
-    
-    # 普通目录切换
-    if (Test-Path $targetPath) {
+    # 检查路径是否为目录
+    if (Test-Path $targetPath -PathType Container) {
         Set-Location $targetPath
         Write-Host "已切换到 $action" -ForegroundColor Green
     } else {
-        Write-Host "错误: 目录不存在 - $targetPath" -ForegroundColor Red
+        Write-Host "错误: 路径不是目录 - $targetPath" -ForegroundColor Red
+        if (Test-Path $targetPath) {
+            Write-Host "提示: 该路径是一个文件，若要运行工具请使用 'tool_ license-lite' 或 'tool_ license-rpa'" -ForegroundColor Yellow
+        } else {
+            Write-Host "错误: 目录不存在 - $targetPath" -ForegroundColor Red
+        }
     }
 }
 
-# Tab 补全功能
+# Tab 补全功能（不变）
 Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
@@ -91,30 +82,24 @@ Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
     try {
         $config = Get-Content $configFile -Raw | ConvertFrom-Json
         
-        # 获取所有可用的 Windows 路径名称
         $completionItems = $config.PSObject.Properties | Where-Object {
             $_.Value.win -and $_.Value.win -ne $null
         } | ForEach-Object {
-            # 将内部的下划线键名转换回用户友好的连字符格式
             $displayName = $_.Name -replace '_', '-'
             $description = $_.Value.description
-            
-            # 创建补全项
             [System.Management.Automation.CompletionResult]::new(
-                $displayName,                    # 补全文本
-                $displayName,                    # 列表文本
-                'ParameterValue',                # 结果类型
-                $description                     # 工具提示
+                $displayName,
+                $displayName,
+                'ParameterValue',
+                $description
             )
         }
         
-        # 根据当前输入过滤补全项
         $completionItems | Where-Object {
             $_.CompletionText -like "$wordToComplete*"
         }
         
     } catch {
-        # 如果解析失败，返回空结果
         return
     }
 }
