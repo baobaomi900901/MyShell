@@ -1,4 +1,5 @@
-﻿function cd_ {
+﻿# MyShell\Windows\win_cd.ps1
+function cd_ {
     param (
         [Parameter(Position = 0)]
         [string]$action
