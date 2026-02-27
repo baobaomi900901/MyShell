@@ -35,7 +35,7 @@
    ```shell
    $functionsDir = "$PSScriptRoot\MyShell\windows"
    if (Test-Path $functionsDir) {
-      Get-ChildItem "$functionsDir\*.ps1" | ForEach-Object {
+      Get-ChildItem "$functionsDir\*\*.ps1" | ForEach-Object {
          . $_.FullName  # 点号表示在当前作用域执行脚本
       }
    }

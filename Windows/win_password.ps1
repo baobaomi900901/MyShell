@@ -1,4 +1,5 @@
-﻿# MyShell\Windows\win_password_fun.ps1
+﻿# .\Windows\win_password.ps1
+# 查询 密码 到剪切板
 
 function pw_ {
     param (

@@ -1,4 +1,4 @@
-﻿# C:\Users\mobytang\Documents\WindowsPowerShell\MyShell\Windows\win_general.ps1
+﻿# .\Windows\win_general.ps1
 
 # 生效脚本
 # . $PROFILE 

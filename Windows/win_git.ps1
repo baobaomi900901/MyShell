@@ -1,4 +1,6 @@
-﻿# Git 简写命令
+﻿# .\Windows\win_git.ps1
+# Git 简写命令
+
 function ga {
     param(
         [Parameter(ValueFromRemainingArguments = $true)]

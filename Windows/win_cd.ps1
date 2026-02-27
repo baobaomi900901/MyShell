@@ -1,4 +1,6 @@
-﻿# MyShell\Windows\win_cd.ps1
+﻿# .\Windows\win_cd.ps1
+# 跳转到不同路径, 路径基于: ..\config\path.json
+
 function cd_ {
     param (
         [Parameter(Position = 0)]
