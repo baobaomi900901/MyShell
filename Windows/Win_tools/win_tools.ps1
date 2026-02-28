@@ -2,9 +2,8 @@
 # 工具方法集:
 #   1. build-lite: 打包 KRPA Lite
 #   2. clean-image: 清理 Markdown 文档中未引用的图片
-#   3. lite_alias: 转换字符串为 RPA 别名格式并生成适合嵌入 JSON 的格式
-#   4. license-lite: 打开 Lite 授权工具
-#   5. license-rpa: 打开 RPA 授权工具
+#   3. license-lite: 打开 Lite 授权工具
+#   4. license-rpa: 打开 RPA 授权工具
 
 function tool_ {
     <#
@@ -39,7 +38,7 @@ function tool_ {
         [Parameter(Position = 0)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('build-lite','clean-image','lite_alias','license-lite','license-rpa')
+            $validActions = @('build-lite','clean-image','license-lite','license-rpa', 'set_lite_alias')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action,
@@ -47,7 +46,10 @@ function tool_ {
         [Parameter(Position = 1, Mandatory = $false)]
         [string]$path = ".",  # 默认当前目录
 
-        [switch]$root  # 仅用于 license-lite
+        [switch]$root,  # 仅用于 license-lite
+
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$extraArgs   # 捕获所有剩余参数
     )
 
     # 内部辅助函数：复制文本到剪贴板
@@ -94,16 +96,6 @@ function tool_ {
             }
         }
 
-        "lite_alias" {
-            $aliasScriptPath = Join-Path $PSScriptRoot "lite_alias.ps1"
-            if (Test-Path $aliasScriptPath) {
-                . $aliasScriptPath                     # 点源加载函数
-                Invoke-LiteAlias -InputString $path    # 调用函数，传入参数
-            } else {
-                Write-Error "找不到 lite_alias 脚本: $aliasScriptPath"
-            }
-        }
-
         "license-lite" {
             $licenseLiteScriptPath = Join-Path $PSScriptRoot "license-lite.ps1"
             if (Test-Path $licenseLiteScriptPath) {
@@ -124,19 +116,24 @@ function tool_ {
             }
         }
 
+        "set_lite_alias" {
+            # 当输入 tool_ set_lite_alias 时，将调起 set_alias.py
+            $pythonScript = Join-Path $PSScriptRoot "set_alias.py"
+            if (Test-Path $pythonScript) {
+                python $pythonScript
+            } else {
+                Write-Error "找不到 set_alias.py 脚本: $pythonScript"
+            }
+        }
+
         default {
             Write-Host "使用方法:" -ForegroundColor Blue
             Write-Host "  build-lite                     # 打包 KRPA Lite" -ForegroundColor Yellow
             Write-Host "  clean-image [路径]             # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
             Write-Host "                                 # 默认路径为当前目录" -ForegroundColor Yellow
-            Write-Host "  lite_alias <字符串>            # 转换字符串为RPA别名格式并生成适合嵌入JSON的格式" -ForegroundColor Yellow
-            Write-Host "                                 # 示例: Data.ExtractContentFromTextV4" -ForegroundColor Yellow
-            Write-Host "                                 # 输出:" -ForegroundColor DarkGray
-            Write-Host '                                 #     "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
-            Write-Host '                                 #         "alias":  []' -ForegroundColor DarkGray
-            Write-Host '                                 #     }' -ForegroundColor DarkGray
             Write-Host "  license-lite [-root]           # 打开 Lite 授权工具，-root 时传递 'kingauto' 参数（密码仍为普通密码）" -ForegroundColor Yellow
             Write-Host "  license-rpa                    # 打开 RPA 授权工具" -ForegroundColor Yellow
+            Write-Host "  setLiteAlias                   # 设置 lite 内置函数的别名" -ForegroundColor Yellow
         }
     }
 }

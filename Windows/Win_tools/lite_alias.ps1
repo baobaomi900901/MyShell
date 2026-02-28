@@ -1,6 +1,22 @@
 ﻿# .\Windows\Win_tools\lite_alias.ps1
 # 将输入字符串转换为 RPA 别名 JSON 片段，并复制到剪贴板
 
+# "lite_alias" {
+#     $aliasScriptPath = Join-Path $PSScriptRoot "lite_alias.ps1"
+#     if (Test-Path $aliasScriptPath) {
+#         . $aliasScriptPath                     # 点源加载函数
+#         Invoke-LiteAlias -InputString $path    # 调用函数，传入参数
+#     } else {
+#         Write-Error "找不到 lite_alias 脚本: $aliasScriptPath"
+#     }
+# }
+# Write-Host "  lite_alias <字符串>            # 转换字符串为RPA别名格式并生成适合嵌入JSON的格式" -ForegroundColor Yellow
+# Write-Host "                                 # 示例: Data.ExtractContentFromTextV4" -ForegroundColor Yellow
+# Write-Host "                                 # 输出:" -ForegroundColor DarkGray
+# Write-Host '                                 #     "RPADataExtractContentFromText":  {' -ForegroundColor DarkGray
+# Write-Host '                                 #         "alias":  []' -ForegroundColor DarkGray
+# Write-Host '                                 #     }' -ForegroundColor DarkGray
+
 function Invoke-LiteAlias {
     <#
     .SYNOPSIS

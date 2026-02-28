@@ -3,3 +3,4 @@ Windows/function_tracker.json
 config/password.json
 config/game.json
 config/path.json
+temp/*
