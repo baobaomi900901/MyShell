@@ -117,12 +117,12 @@ function tool_ {
         }
 
         "set_lite_alias" {
-            # 当输入 tool_ set_lite_alias 时，将调起 set_alias.py
-            $pythonScript = Join-Path $PSScriptRoot "set_alias.py"
+            # 当输入 tool_ set_lite_alias 时，将调起 set_lite_alias.py
+            $pythonScript = Join-Path $PSScriptRoot "set_lite_alias.py"
             if (Test-Path $pythonScript) {
                 python $pythonScript
             } else {
-                Write-Error "找不到 set_alias.py 脚本: $pythonScript"
+                Write-Error "找不到 set_lite_alias.py 脚本: $pythonScript"
             }
         }
 
