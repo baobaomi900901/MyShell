@@ -141,7 +141,7 @@ function hsh {
     Write-Host "  ga            # git add" -ForegroundColor Yellow
     Write-Host "  gpr           # git pull" -ForegroundColor Yellow
     Write-Host "  gpo           # git push" -ForegroundColor Yellow
-    Write-Host "  greset        # git reset --hard" -ForegroundColor Yellow
+    Write-Host "  glocal       # git log origin/develop..HEAD --oneline " -ForegroundColor Yellow
 }
 
 function setsh { 
