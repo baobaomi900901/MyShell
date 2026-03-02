@@ -1,5 +1,3 @@
-# .\Windows\Win_tools\set_alias.ps1
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -40,11 +38,34 @@ def load_function_settings():
         print(f"加载函数别名配置失败: {e}")
         return {}
 
+def compact_json_arrays(json_str):
+    """
+    将 JSON 字符串中的所有数组（[...]）压缩为单行。
+    注意：假设数组内没有嵌套数组，且字符串值中不包含未转义的方括号。
+    """
+    # 匹配 [ ... ] 之间的内容，并跨行匹配
+    pattern = r'\[\s*(.*?)\s*\]'
+
+    def replacer(match):
+        inner = match.group(1)
+        # 去除 inner 中的所有换行和行首缩进，替换为单个空格
+        inner = re.sub(r'\n\s+', ' ', inner)
+        # 去除首尾多余空格
+        inner = inner.strip()
+        return f'[{inner}]'
+
+    return re.sub(pattern, replacer, json_str, flags=re.DOTALL)
+
 def save_function_settings(settings):
     try:
         os.makedirs(os.path.dirname(FUNCTION_ALIAS_PATH), exist_ok=True)
-        with open(FUNCTION_ALIAS_PATH, 'w', encoding='utf-8-sig') as f:
-            json.dump(settings, f, indent=4, ensure_ascii=False)
+        # 先生成带缩进的 JSON 字符串
+        json_str = json.dumps(settings, indent=2, ensure_ascii=False)
+        # 压缩所有数组为单行
+        json_str = compact_json_arrays(json_str)
+        # 写入文件（UTF-8 无 BOM）
+        with open(FUNCTION_ALIAS_PATH, 'w', encoding='utf-8') as f:
+            f.write(json_str)
         return True
     except Exception as e:
         print(f"保存函数别名配置失败: {e}")
