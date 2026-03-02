@@ -133,7 +133,7 @@ def main():
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'w', encoding='utf-8') as f:
-                f.write("# lite函数别名变更\n")
+                f.write("# rpalite:lite函数别名变更\n")
                 f.write("\n")
                 f.write("# 新增\n")
                 for rpa_alias in sorted(net_add.keys()):
