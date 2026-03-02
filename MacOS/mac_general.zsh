@@ -17,6 +17,7 @@ hsh() {
     echo -e "${c_y}  gpr           # git pull${c_x}"
     echo -e "${c_y}  gpo           # git push${c_x}"
     echo -e "${c_y}  greset        # git reset --hard${c_x}"
+    echo -e "${c_y}  gloacl        # git log origin/develop..HEAD ${c_x}"
 }
 
 # 重载自定义shell配置文件

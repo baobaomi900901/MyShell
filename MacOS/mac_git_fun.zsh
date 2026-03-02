@@ -63,3 +63,7 @@ gsuk() {
 gspop() {
     git stash pop
 }
+
+glocal() { 
+    git log origin/develop..HEAD --oneline
+}
