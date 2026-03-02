@@ -59,3 +59,4 @@ function greset {
 function gsuk { git stash -u -k }
 function gspop { git stash pop }
 function grecmt { git reset --soft HEAD~1 }
+function glogcmt { git log origin/develop..HEAD --oneline}

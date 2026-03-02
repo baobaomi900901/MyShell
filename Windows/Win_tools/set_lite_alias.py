@@ -72,8 +72,9 @@ def split_alias_arg(alias_arg):
 def load_net_state():
     net_add = {}
     net_remove = {}
+    alias_info = {}
     if not os.path.exists(LOG_PATH):
-        return net_add, net_remove
+        return net_add, net_remove, alias_info
     try:
         with open(LOG_PATH, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -99,11 +100,14 @@ def load_net_state():
                     if not isinstance(alias_list, list):
                         continue
                     if '|' in info_part:
+                        chinese = info_part.split('|', 1)[0].strip()
                         raw_key = info_part.split('|', 1)[1].strip()
                     else:
+                        chinese = info_part
                         raw_key = info_part
                     cleaned = remove_version_suffix(raw_key)
                     rpa_alias = convert_to_rpa_alias(cleaned)
+                    alias_info[rpa_alias] = (chinese, raw_key)
                     if section == 'add':
                         net_add[rpa_alias] = set(alias_list)
                     else:
@@ -112,7 +116,7 @@ def load_net_state():
                     continue
     except Exception as e:
         print(f"读取日志失败: {e}")
-    return net_add, net_remove
+    return net_add, net_remove, alias_info
 
 def main():
     chinese_to_keys = load_chinese_map()
@@ -123,8 +127,7 @@ def main():
     if function_settings is None:
         function_settings = {}
 
-    net_add, net_remove = load_net_state()
-    alias_info = {}  # key: rpa_alias, value: (chinese_text, raw_key)
+    net_add, net_remove, alias_info = load_net_state()
 
     def write_final_log():
         try:
@@ -159,7 +162,7 @@ def main():
     print("  <中文文本> add <别名列表>            # 添加别名（多个别名用逗号分隔，支持引号包裹含空格的别名）")
     print("  <中文文本> rm <别名列表>             # 删除指定的别名（多个别名用逗号分隔）")
     print("  <中文文本> rm -f                     # 强制删除整个 RPA 别名条目（包括其所有别名）")
-    print("  gpo                                  # 提交 FunctionSetting.json，并使用日志内容作为 commit message")
+    print("  push                                 # 提交 FunctionSetting.json，并使用日志内容作为 commit message")
 
     while True:
         try:
@@ -171,7 +174,8 @@ def main():
                 print("退出设置模式")
                 break
 
-            if raw_cmd.lower() == "gpo":
+            if raw_cmd.lower() == "push":
+                # 1. 将内存净变更写入日志，确保最新
                 write_final_log()
                 if not os.path.exists(LOG_PATH):
                     print("日志文件不存在，无法提交")
@@ -186,54 +190,81 @@ def main():
                     print("提交已取消")
                     continue
 
+                stash_created = False
                 try:
                     os.chdir(REPO_ROOT)
 
-                    pull_result = subprocess.run(["git", "pull", "--rebase"], capture_output=True, text=True, encoding='utf-8')
-                    if pull_result.returncode != 0:
-                        print("git pull --rebase 失败，请手动解决冲突或提交/暂存工作区更改后重试。")
-                        if pull_result.stderr:
-                            print(pull_result.stderr)
-                        continue
-
+                    # 2. git add 目标文件
                     add_result = subprocess.run(["git", "add", TARGET_FILE], capture_output=True, text=True, encoding='utf-8')
                     if add_result.returncode != 0:
                         print(f"git add 失败: {add_result.stderr}")
                         continue
+
+                    # 3. 检查目标文件是否有变化（暂存区是否有内容）
                     diff_cached = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
                     if diff_cached.returncode == 0:
                         print("FunctionSetting.json 没有变化，无需提交")
                         subprocess.run(["git", "reset", TARGET_FILE])
                         continue
 
+                    # 4. git stash -u -k 暂存其他更改（保留暂存区的目标文件）
                     stash_result = subprocess.run(["git", "stash", "push", "-u", "-k"], capture_output=True, text=True, encoding='utf-8')
                     stash_created = (stash_result.returncode == 0 and "No local changes to save" not in stash_result.stdout)
 
+                    # 5. git commit
                     commit_result = subprocess.run(["git", "commit", "-F", LOG_PATH], capture_output=True, text=True, encoding='utf-8')
-                    if commit_result.returncode == 0:
-                        print("提交成功:", commit_result.stdout)
-                        # 提交成功后清空净变更状态并重置日志
-                        net_add.clear()
-                        net_remove.clear()
-                        write_final_log()
-                        print("日志已清空，准备下一次累积")
-                    else:
+                    if commit_result.returncode != 0:
                         print("提交失败:", commit_result.stderr)
+                        # 提交失败，恢复 stash 并 reset
                         if stash_created:
                             subprocess.run(["git", "stash", "pop"], capture_output=True)
                         subprocess.run(["git", "reset", TARGET_FILE])
                         continue
 
+                    print("提交成功:", commit_result.stdout)
+
+                    # 6. 提交成功后清空净变更状态并重置日志
+                    net_add.clear()
+                    net_remove.clear()
+                    write_final_log()
+                    print("日志已清空，准备下一次累积")
+
+                    # 7. git pull --rebase
+                    pull_result = subprocess.run(["git", "pull", "--rebase"], capture_output=True, text=True, encoding='utf-8')
+                    if pull_result.returncode != 0:
+                        print("git pull --rebase 失败，请手动解决冲突。")
+                        if pull_result.stderr:
+                            print(pull_result.stderr)
+                        # 注意：此时已提交，stash 还在，我们需要提示用户手动处理
+                        print("由于 pull 失败，请手动处理冲突后执行 git push，然后执行 git stash pop 恢复工作区。")
+                        continue
+
+                    # 8. git push
+                    push_result = subprocess.run(["git", "push"], capture_output=True, text=True, encoding='utf-8')
+                    if push_result.returncode == 0:
+                        print("推送成功:", push_result.stdout)
+                    else:
+                        print("推送失败:", push_result.stderr)
+                        # 推送失败，但 pull 成功，可能需要手动处理
+                        print("请手动处理推送问题，然后执行 git stash pop 恢复工作区。")
+                        continue
+
+                    # 9. git stash pop 恢复工作区
                     if stash_created:
                         pop_result = subprocess.run(["git", "stash", "pop"], capture_output=True, text=True, encoding='utf-8')
                         if pop_result.returncode == 0:
                             print("工作区已恢复")
                         else:
-                            print("恢复 stash 失败:", pop_result.stderr)
+                            print("恢复 stash 失败，请手动解决冲突。")
+                            if pop_result.stderr:
+                                print(pop_result.stderr)
+
                 except Exception as e:
                     print(f"执行 git 操作出错: {e}")
+                    # 尝试恢复
                     subprocess.run(["git", "reset", TARGET_FILE], stderr=subprocess.DEVNULL)
-                    subprocess.run(["git", "stash", "pop"], stderr=subprocess.DEVNULL)
+                    if stash_created:
+                        subprocess.run(["git", "stash", "pop"], stderr=subprocess.DEVNULL)
                 continue
 
             tokens = shlex.split(raw_cmd)
