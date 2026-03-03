@@ -3,13 +3,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-license_lite_auto.py - 启动Lite授权工具并自动完成机器标识输入、生成授权码。
+license_lite_auto.py - 启动Lite授权工具并自动完成机器标识、授权期限输入，生成授权码。
+
 用法：
     python license_lite_auto.py [--root] MACHINE_ID
 
 选项：
     --root      以 root 模式启动（传递 kingauto 参数）
     MACHINE_ID  机器标识字符串
+
+交互：
+    脚本会提示输入授权期限（格式 YYYY-MM-DD），校验通过后继续。
+    如果目标窗口已存在，则直接使用现有窗口，不再重复启动程序。
 """
 
 import os
@@ -17,6 +22,8 @@ import sys
 import time
 import argparse
 import subprocess
+import re
+from datetime import datetime
 from pathlib import Path
 
 import win32gui
@@ -32,7 +39,6 @@ PASSWORD = "kingautomate"                   # 授权密码
 MAX_WAIT_SECONDS = 15                        # 等待窗口出现的最大时间（秒）
 # =============================
 
-# ---------- 辅助函数（复用之前的自动化代码）----------
 def find_window_handle(title):
     """根据窗口标题查找窗口句柄（精确匹配）"""
     def enum_callback(hwnd, hwnds):
@@ -70,6 +76,12 @@ def get_edit_boxes_info(window):
                 except:
                     pass
 
+            help_text = ''
+            try:
+                help_text = ctrl.GetPropertyValue(auto.PropertyId.HelpTextProperty)
+            except:
+                pass
+
             edit_boxes.append({
                 'control': ctrl,
                 'index': len(edit_boxes),
@@ -77,7 +89,8 @@ def get_edit_boxes_info(window):
                 'class_name': class_name,
                 'automation_id': automation_id,
                 'rect': bounding_rect,
-                'is_readonly': is_readonly
+                'is_readonly': is_readonly,
+                'help_text': help_text
             })
     return edit_boxes
 
@@ -187,7 +200,7 @@ def click_generate_button(window):
     return False
 
 def copy_authorization_code_to_clipboard(window):
-    """将授权码结果（第一个编辑框，ClassName=TMemo）复制到剪贴板"""
+    """将授权码结果（ClassName=TMemo）复制到剪贴板"""
     print("\n正在获取授权码结果...")
     all_controls = window.GetChildren()
     memo_ctrl = None
@@ -212,8 +225,8 @@ def copy_authorization_code_to_clipboard(window):
         code_text = value_pattern.Value
         if code_text:
             pyperclip.copy(code_text)
-            print(f"✅ 已复制授权码到剪贴板")
-            # print(f"   前50字符: {code_text[:50]}{'...' if len(code_text)>50 else ''}")
+            print(f"✅ 已复制授权码到剪贴板，内容长度: {len(code_text)} 字符")
+            print(f"   前50字符: {code_text[:50]}{'...' if len(code_text)>50 else ''}")
             return True
         else:
             print("⚠️ 授权码内容为空，可能尚未生成")
@@ -240,69 +253,118 @@ def wait_for_window(title, max_seconds=MAX_WAIT_SECONDS):
     print(f"❌ 等待窗口超时 ({max_seconds}秒)")
     return None
 
-# ---------- 主流程 ----------
+def validate_date(date_str):
+    """验证日期格式是否为 YYYY-MM-DD 且为有效日期"""
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return False
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
 def main():
-    parser = argparse.ArgumentParser(description="自动完成Lite授权工具的机器标识输入和授权码生成")
+    parser = argparse.ArgumentParser(description="自动完成Lite授权工具的机器标识、授权期限输入和授权码生成")
     parser.add_argument("--root", action="store_true", help="以 root 模式启动（传递 kingauto 参数）")
     parser.add_argument("machine_id", help="机器标识字符串")
     args = parser.parse_args()
 
-    # 获取exe路径
-    exe_path = get_default_exe_path()
-    if not exe_path.exists():
-        print(f"错误: 程序文件不存在: {exe_path}", file=sys.stderr)
-        sys.exit(1)
+    # 交互式获取授权期限日期
+    print("请输入授权期限（格式 YYYY-MM-DD）：")
+    while True:
+        expiry_date = input("> ").strip()
+        if validate_date(expiry_date):
+            break
+        else:
+            print("日期格式错误或无效，请重新输入（例如 2025-12-31）：")
 
-    # 启动exe
-    print(f"启动 LiteLicense.exe{' (Root模式)' if args.root else ''}...")
-    if args.root:
-        subprocess.Popen([str(exe_path), "kingauto"])
+    # 先检查窗口是否已存在
+    hwnd = find_window_handle(WINDOW_TITLE)
+    if hwnd:
+        print(f"✅ 已存在窗口 '{WINDOW_TITLE}'，直接使用现有窗口。")
     else:
-        subprocess.Popen([str(exe_path)])
+        exe_path = get_default_exe_path()
+        if not exe_path.exists():
+            print(f"错误: 程序文件不存在: {exe_path}", file=sys.stderr)
+            sys.exit(1)
 
-    # 等待窗口出现
-    hwnd = wait_for_window(WINDOW_TITLE)
-    if not hwnd:
-        print("无法找到授权窗口，退出。", file=sys.stderr)
-        sys.exit(1)
+        print(f"启动 LiteLicense.exe{' (Root模式)' if args.root else ''}...")
+        if args.root:
+            subprocess.Popen([str(exe_path), "kingauto"])
+        else:
+            subprocess.Popen([str(exe_path)])
 
-    # 获取窗口对象
+        # 等待窗口出现
+        hwnd = wait_for_window(WINDOW_TITLE)
+        if not hwnd:
+            print("无法找到授权窗口，退出。", file=sys.stderr)
+            sys.exit(1)
+
     window = auto.ControlFromHandle(hwnd)
     window.SetFocus()
     time.sleep(0.5)
 
-    # 获取所有编辑框信息
     edit_boxes = get_edit_boxes_info(window)
     print("\n当前窗口中所有编辑框：")
     for eb in edit_boxes:
-        print(f"  索引 {eb['index']}: ClassName={eb['class_name']}, IsPassword={eb['is_password']}, IsReadOnly={eb['is_readonly']}, AutomationId={eb['automation_id']}")
+        print(f"  索引 {eb['index']}: ClassName={eb['class_name']}, IsPassword={eb['is_password']}, IsReadOnly={eb['is_readonly']}, HelpText='{eb['help_text']}', AutomationId={eb['automation_id']}")
 
-    # 定位密码框 (ClassName='TEdit', IsPassword=True)
+    # 定位机器标识框：ClassName='TEdit', IsPassword=False, IsReadOnly=False，且 HelpText 为空
+    machine_ctrl = None
+    for eb in edit_boxes:
+        if (eb['class_name'] == 'TEdit' 
+                and eb['is_password'] is False 
+                and eb['is_readonly'] is False 
+                and (eb['help_text'] is None or eb['help_text'] == '')):
+            machine_ctrl = eb['control']
+            print(f"\n✅ 找到机器标识框，索引 {eb['index']}")
+            break
+
+    # 定位授权期限框：ClassName='TEdit', HelpText 包含 "正确日期格式"
+    expiry_ctrl = None
+    for eb in edit_boxes:
+        if eb['class_name'] == 'TEdit' and '正确日期格式' in eb['help_text']:
+            expiry_ctrl = eb['control']
+            print(f"✅ 找到授权期限框，索引 {eb['index']} (HelpText: {eb['help_text']})")
+            break
+
+    # 定位密码框：ClassName='TEdit', IsPassword=True
     password_ctrl = None
     for eb in edit_boxes:
         if eb['class_name'] == 'TEdit' and eb['is_password'] is True:
             password_ctrl = eb['control']
-            print(f"\n✅ 找到授权密码框，索引 {eb['index']}")
+            print(f"✅ 找到授权密码框，索引 {eb['index']}")
             break
 
-    # 定位机器标识框 (ClassName='TEdit', IsPassword=False, IsReadOnly=False)
-    machine_ctrl = None
-    for eb in edit_boxes:
-        if eb['class_name'] == 'TEdit' and eb['is_password'] is False and eb['is_readonly'] is False:
-            machine_ctrl = eb['control']
-            print(f"✅ 找到机器标识框，索引 {eb['index']}")
-            break
-
-    # 备用方案（基于索引，如果未通过属性找到）
-    if not password_ctrl and len(edit_boxes) > 1:
-        print("\n⚠️ 未通过属性找到授权密码框，尝试使用索引1（第二个编辑框）")
-        password_ctrl = edit_boxes[1]['control']
-    if not machine_ctrl and len(edit_boxes) > 3:
-        print("\n⚠️ 未通过属性找到机器标识框，尝试使用索引3（第四个编辑框）")
-        machine_ctrl = edit_boxes[3]['control']
+    # 备用方案（基于索引，仅当上述逻辑失败时）
+    if not machine_ctrl:
+        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and eb['is_readonly'] is False and eb['is_password'] is False]
+        if candidates:
+            machine_ctrl = candidates[0]['control']
+            print(f"\n⚠️ 使用备用方案，选择第一个可编辑TEdit作为机器标识框，索引 {candidates[0]['index']}")
+    if not expiry_ctrl:
+        # 如果没找到，可能是HelpText获取不到，尝试根据位置（假设是第一个可编辑TEdit）？但更可靠的是根据HelpText，这里暂时不设自动备用，而是报错。
+        # 为了兼容性，可以尝试查找 HelpText 非空且包含日期的
+        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and '日期' in eb['help_text']]
+        if candidates:
+            expiry_ctrl = candidates[0]['control']
+            print(f"⚠️ 使用备用方案，根据'日期'关键词找到授权期限框，索引 {candidates[0]['index']}")
+        else:
+            # 最后一个备选：假设索引 0 是授权期限（根据之前UI，第一个是授权期限，索引0）
+            if len(edit_boxes) > 0 and edit_boxes[0]['class_name'] == 'TEdit':
+                expiry_ctrl = edit_boxes[0]['control']
+                print(f"⚠️ 使用备用方案，假设索引0为授权期限框")
+    if not password_ctrl:
+        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and eb['is_password'] is True]
+        if candidates:
+            password_ctrl = candidates[0]['control']
+            print(f"⚠️ 使用备用方案，选择第一个密码TEdit作为授权密码框，索引 {candidates[0]['index']}")
 
     if not machine_ctrl:
         print("❌ 无法定位机器标识框")
+        sys.exit(1)
+    if not expiry_ctrl:
+        print("❌ 无法定位授权期限框")
         sys.exit(1)
     if not password_ctrl:
         print("❌ 无法定位授权密码框")
@@ -310,7 +372,8 @@ def main():
 
     # 输入机器标识
     input_to_control(machine_ctrl, args.machine_id, "机器标识框")
-
+    # 输入授权期限
+    input_to_control(expiry_ctrl, expiry_date, "授权期限框")
     # 输入授权密码
     input_to_control(password_ctrl, PASSWORD, "授权密码框")
 
@@ -318,11 +381,9 @@ def main():
     click_success = click_generate_button(window)
     if not click_success:
         print("点击生成按钮失败，可能无法生成授权码。")
-        # 仍然尝试复制结果，但可能为空
 
-    # 等待授权码生成（固定等待，可改进为检测结果框内容变化）
     print("\n等待授权码生成...")
-    time.sleep(2)
+    time.sleep(2)  # 可根据实际情况调整或改为检测结果框变化
 
     # 复制授权码到剪贴板
     copy_authorization_code_to_clipboard(window)
