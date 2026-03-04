@@ -3,10 +3,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-license_lite_auto.py - 启动Lite授权工具并自动完成机器标识、授权期限输入，生成授权码。
+license_lite.py - 启动Lite授权工具并自动完成机器标识、授权期限输入，生成授权码。
 
 用法：
-    python license_lite_auto.py [--root] MACHINE_ID
+    python license_lite.py [--root] MACHINE_ID
 
 选项：
     --root      以 root 模式启动，启动参数从 ../../config/password.json 的 lite-forever.password 读取
@@ -31,14 +31,50 @@ import win32gui
 import uiautomation as auto
 import pyperclip
 
-# ========== 配置区域 ==========
+# ==================== 配置区域（请根据UI特征修改） ====================
+# 窗口标题
+WINDOW_TITLE = "K-RPA Lite授权"
+
+# 授权密码（填入密码框的字符串）
+PASSWORD = "kingautomate"
+
+# 等待窗口出现的最长时间（秒）
+MAX_WAIT_SECONDS = 15
+
+# ----- 控件定位特征（修改这些以匹配实际UI） -----
+# 机器标识框
+MACHINE_CLASS = "TEdit"
+MACHINE_IS_PASSWORD = False
+MACHINE_IS_READONLY = False
+MACHINE_HELP_TEXT = ""                 # 帮助文本为空
+
+# 授权期限框
+EXPIRY_CLASS = "TEdit"
+EXPIRY_HELP_TEXT_KEYWORD = "正确日期格式"   # 帮助文本包含的关键词
+
+# 授权密码框
+PASSWORD_CLASS = "TEdit"
+PASSWORD_IS_PASSWORD = True
+
+# 授权码结果框
+RESULT_CLASS = "TMemo"
+
+# 生成按钮
+GENERATE_BUTTON_NAME = "生成"
+
+# ----- 备用定位（当上述条件匹配失败时使用）-----
+# 是否启用备用方案（基于索引或关键词）
+ENABLE_FALLBACK = True
+# 备用方案中假设的索引（例如：授权期限框可能是第一个TEdit）
+FALLBACK_EXPIRY_INDEX = 0
+# 备用方案中根据“日期”关键词搜索
+FALLBACK_EXPIRY_KEYWORD = "日期"
+
+# ----- 可执行文件路径 -----
 DEFAULT_EXE_RELATIVE = Path("KingAutomate/Licenses/LiteLicense/LiteLicense.exe")
 PROJECT_ROOT_ENV_VAR = "AOM_ROOT"          # 可选环境变量，用于覆盖项目根目录
 DEFAULT_PROJECT_ROOT = r"D:\Code\aom"      # 默认项目根目录
-WINDOW_TITLE = "K-RPA Lite授权"             # 窗口标题
-PASSWORD = "kingautomate"                   # 授权密码（UI密码，可考虑也改为从配置文件读取，当前保持硬编码）
-MAX_WAIT_SECONDS = 15                        # 等待窗口出现的最大时间（秒）
-# =============================
+# ============================================================
 
 def find_window_handle(title):
     """根据窗口标题查找窗口句柄（精确匹配）"""
@@ -138,7 +174,7 @@ def click_generate_button(window):
 
     # 方法1：通过 Name 定位
     try:
-        button = window.ButtonControl(Name='生成')
+        button = window.ButtonControl(Name=GENERATE_BUTTON_NAME)
         if not button.Exists():
             button = None
     except:
@@ -148,17 +184,17 @@ def click_generate_button(window):
         # 方法2：遍历查找 Name='生成' 的按钮
         try:
             for ctrl in window.GetChildren():
-                if ctrl.ControlType == auto.ControlType.ButtonControl and ctrl.Name == '生成':
+                if ctrl.ControlType == auto.ControlType.ButtonControl and ctrl.Name == GENERATE_BUTTON_NAME:
                     button = ctrl
                     break
         except:
             pass
 
     if not button:
-        print("❌ 未能找到'生成'按钮")
+        print(f"❌ 未能找到'{GENERATE_BUTTON_NAME}'按钮")
         return False
 
-    print("✅ 找到'生成'按钮，尝试点击...")
+    print(f"✅ 找到'{GENERATE_BUTTON_NAME}'按钮，尝试点击...")
     button.SetFocus()
     time.sleep(0.3)
 
@@ -206,19 +242,19 @@ def copy_authorization_code_to_clipboard(window):
     all_controls = window.GetChildren()
     memo_ctrl = None
 
-    # 查找 ClassName='TMemo' 的编辑框
+    # 查找 ClassName=RESULT_CLASS 的编辑框
     for ctrl in all_controls:
         if ctrl.ControlType == auto.ControlType.EditControl:
             try:
                 class_name = ctrl.GetPropertyValue(auto.PropertyId.ClassNameProperty)
-                if class_name == 'TMemo':
+                if class_name == RESULT_CLASS:
                     memo_ctrl = ctrl
                     break
             except:
                 continue
 
     if not memo_ctrl:
-        print("❌ 未找到授权码结果框（ClassName=TMemo）")
+        print(f"❌ 未找到授权码结果框（ClassName={RESULT_CLASS}）")
         return False
 
     try:
@@ -351,55 +387,56 @@ def main():
     for eb in edit_boxes:
         print(f"  索引 {eb['index']}: ClassName={eb['class_name']}, IsPassword={eb['is_password']}, IsReadOnly={eb['is_readonly']}, HelpText='{eb['help_text']}', AutomationId={eb['automation_id']}")
 
-    # 定位机器标识框：ClassName='TEdit', IsPassword=False, IsReadOnly=False，且 HelpText 为空
+    # 定位机器标识框：使用配置的特征
     machine_ctrl = None
     for eb in edit_boxes:
-        if (eb['class_name'] == 'TEdit' 
-                and eb['is_password'] is False 
-                and eb['is_readonly'] is False 
-                and (eb['help_text'] is None or eb['help_text'] == '')):
+        if (eb['class_name'] == MACHINE_CLASS 
+                and eb['is_password'] is MACHINE_IS_PASSWORD 
+                and eb['is_readonly'] is MACHINE_IS_READONLY 
+                and (eb['help_text'] is None or eb['help_text'] == MACHINE_HELP_TEXT)):
             machine_ctrl = eb['control']
             print(f"\n✅ 找到机器标识框，索引 {eb['index']}")
             break
 
-    # 定位授权期限框：ClassName='TEdit', HelpText 包含 "正确日期格式"
+    # 定位授权期限框：使用配置的关键词
     expiry_ctrl = None
     for eb in edit_boxes:
-        if eb['class_name'] == 'TEdit' and '正确日期格式' in eb['help_text']:
+        if eb['class_name'] == EXPIRY_CLASS and EXPIRY_HELP_TEXT_KEYWORD in eb['help_text']:
             expiry_ctrl = eb['control']
             print(f"✅ 找到授权期限框，索引 {eb['index']} (HelpText: {eb['help_text']})")
             break
 
-    # 定位密码框：ClassName='TEdit', IsPassword=True
+    # 定位密码框：使用配置的特征
     password_ctrl = None
     for eb in edit_boxes:
-        if eb['class_name'] == 'TEdit' and eb['is_password'] is True:
+        if eb['class_name'] == PASSWORD_CLASS and eb['is_password'] is PASSWORD_IS_PASSWORD:
             password_ctrl = eb['control']
             print(f"✅ 找到授权密码框，索引 {eb['index']}")
             break
 
-    # 备用方案（基于索引，仅当上述逻辑失败时）
-    if not machine_ctrl:
-        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and eb['is_readonly'] is False and eb['is_password'] is False]
-        if candidates:
-            machine_ctrl = candidates[0]['control']
-            print(f"\n⚠️ 使用备用方案，选择第一个可编辑TEdit作为机器标识框，索引 {candidates[0]['index']}")
-    if not expiry_ctrl:
-        # 如果没找到，尝试查找 HelpText 包含 "日期" 的
-        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and '日期' in eb['help_text']]
-        if candidates:
-            expiry_ctrl = candidates[0]['control']
-            print(f"⚠️ 使用备用方案，根据'日期'关键词找到授权期限框，索引 {candidates[0]['index']}")
-        else:
-            # 最后一个备选：假设索引 0 是授权期限（根据之前UI，第一个是授权期限，索引0）
-            if len(edit_boxes) > 0 and edit_boxes[0]['class_name'] == 'TEdit':
-                expiry_ctrl = edit_boxes[0]['control']
-                print(f"⚠️ 使用备用方案，假设索引0为授权期限框")
-    if not password_ctrl:
-        candidates = [eb for eb in edit_boxes if eb['class_name'] == 'TEdit' and eb['is_password'] is True]
-        if candidates:
-            password_ctrl = candidates[0]['control']
-            print(f"⚠️ 使用备用方案，选择第一个密码TEdit作为授权密码框，索引 {candidates[0]['index']}")
+    # 备用方案（如果 ENABLE_FALLBACK 为 True）
+    if ENABLE_FALLBACK:
+        if not machine_ctrl:
+            candidates = [eb for eb in edit_boxes if eb['class_name'] == MACHINE_CLASS and eb['is_readonly'] is False and eb['is_password'] is False]
+            if candidates:
+                machine_ctrl = candidates[0]['control']
+                print(f"\n⚠️ 使用备用方案，选择第一个可编辑{MACHINE_CLASS}作为机器标识框，索引 {candidates[0]['index']}")
+        if not expiry_ctrl:
+            # 尝试根据备用关键词搜索
+            candidates = [eb for eb in edit_boxes if eb['class_name'] == EXPIRY_CLASS and FALLBACK_EXPIRY_KEYWORD in eb['help_text']]
+            if candidates:
+                expiry_ctrl = candidates[0]['control']
+                print(f"⚠️ 使用备用方案，根据'{FALLBACK_EXPIRY_KEYWORD}'关键词找到授权期限框，索引 {candidates[0]['index']}")
+            else:
+                # 假设索引 FALLBACK_EXPIRY_INDEX 是授权期限框
+                if len(edit_boxes) > FALLBACK_EXPIRY_INDEX and edit_boxes[FALLBACK_EXPIRY_INDEX]['class_name'] == EXPIRY_CLASS:
+                    expiry_ctrl = edit_boxes[FALLBACK_EXPIRY_INDEX]['control']
+                    print(f"⚠️ 使用备用方案，假设索引{FALLBACK_EXPIRY_INDEX}为授权期限框")
+        if not password_ctrl:
+            candidates = [eb for eb in edit_boxes if eb['class_name'] == PASSWORD_CLASS and eb['is_password'] is True]
+            if candidates:
+                password_ctrl = candidates[0]['control']
+                print(f"⚠️ 使用备用方案，选择第一个密码{PASSWORD_CLASS}作为授权密码框，索引 {candidates[0]['index']}")
 
     if not machine_ctrl:
         print("❌ 无法定位机器标识框")
