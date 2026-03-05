@@ -1,3 +1,5 @@
+# .\Windows\Win_tools\set_lite_alias.py
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 

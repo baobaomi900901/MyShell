@@ -33,7 +33,7 @@ function tool_ {
         [Parameter(Position = 0, Mandatory = $true)]
         [ArgumentCompleter({
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('build-lite','clean-image','license-lite','license-rpa', 'set_lite_alias')
+            $validActions = @('build-lite','clean-image','license-lite','license-rpa', 'set_lite_alias', 'file_tree')
             $validActions -like "$wordToComplete*"
         })]
         [string]$action,
@@ -119,6 +119,14 @@ function tool_ {
                 python $pythonScript
             } else {
                 Write-Error "找不到 set_lite_alias.py 脚本: $pythonScript" 
+            }
+        }
+        "file_tree" {
+            $pythonScript = Join-Path $PSScriptRoot "file_tree.py"
+            if (Test-Path $pythonScript) {
+                python $pythonScript
+            } else {
+                Write-Error "找不到 file_tree.py 脚本: $pythonScript"
             }
         }
 
