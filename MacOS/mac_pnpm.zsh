@@ -19,3 +19,7 @@ pa() {
 pi() {
     pnpm install "$@"
 }
+
+pb() {
+    pnpm build
+}
