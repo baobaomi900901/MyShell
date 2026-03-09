@@ -1,4 +1,9 @@
 #pnpm
+
+p() {
+    pnpm "$@"
+}
+
 pd() {
     pnpm run dev
 }
