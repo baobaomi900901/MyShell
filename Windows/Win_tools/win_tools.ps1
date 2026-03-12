@@ -127,14 +127,6 @@ function tool_ {
                 Write-Error "找不到 set_lite_alias.py 脚本: $pythonScript" 
             }
         }
-        "file_tree" {
-            $pythonScript = Join-Path $PSScriptRoot "file_tree.py"
-            if (Test-Path $pythonScript) {
-                python $pythonScript
-            } else {
-                Write-Error "找不到 file_tree.py 脚本: $pythonScript"
-            }
-        }
 
         default {
             Write-Host "使用方法:" -ForegroundColor Blue
