@@ -12,7 +12,7 @@ function reloadsh {
     $MyShellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
     $WindowsPath = Join-Path $MyShellPath "Windows"   # 根目录
     $jsonFile = Join-Path $WindowsPath "function_tracker.json"
-    # Python 脚本位于 Windows\Win_general\Win_tools\reloadsh.py
+    # Python 脚本位于 Windows\Win_general\reloadsh.py
     $pythonScript = Join-Path $WindowsPath "Win_general\reloadsh.py"
 
     # 检查 Python 脚本是否存在
