@@ -1,4 +1,4 @@
-# .\Windows\Win_tools\reloadsh_helper.py
+# .\Windows\Win_general\reloadsh.py
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -90,10 +90,8 @@ def main():
         ps_commands.append(f'Write-Host "🗑️  删除方法 ({len(removed)}):" -ForegroundColor Red')
         for func in removed:
             ps_commands.append(f'Write-Host "   ❌ {func}" -ForegroundColor Red')
-        ps_commands.append('Write-Host "🧹 清理已删除函数..." -ForegroundColor Yellow')
         for func in removed:
             ps_commands.append(f'Remove-Item "function:{func}" -ErrorAction SilentlyContinue')
-            ps_commands.append(f'Write-Host "   🧹 移除: {func}" -ForegroundColor Yellow')
         ps_commands.append('Write-Host "✅ 清理完成" -ForegroundColor Green')
     else:
         ps_commands.append('Write-Host "✅ 没有删除方法" -ForegroundColor Green')
@@ -106,9 +104,6 @@ def main():
     ps_commands.append('Write-Host "✅ 已重新加载所有函数文件" -ForegroundColor Green')
 
     # Profile reminder
-    ps_commands.append('Write-Host "ℹ️ 如需更新别名或其他profile内容，请手动执行: . `$PROFILE" -ForegroundColor Yellow')
-    ps_commands.append('Set-Clipboard -Value ". `$PROFILE"')
-    ps_commands.append('Write-Host "📋 命令已复制到剪贴板" -ForegroundColor Cyan')
     ps_commands.append('Write-Host "✅ reload完成！" -ForegroundColor Green')
 
     # Output the whole script block

@@ -1,4 +1,4 @@
-﻿# .\Windows\win_general.ps1
+﻿# .\Windows\Win_general\win_general.ps1
 
 # 生效脚本
 # . $PROFILE 
@@ -10,9 +10,10 @@
 function reloadsh {
     # 计算基础路径
     $MyShellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
-    $WindowsPath = Join-Path $MyShellPath "Windows"
+    $WindowsPath = Join-Path $MyShellPath "Windows"   # 根目录
     $jsonFile = Join-Path $WindowsPath "function_tracker.json"
-    $pythonScript = Join-Path $WindowsPath "reloadsh_helper.py"
+    # Python 脚本位于 Windows\Win_general\Win_tools\reloadsh.py
+    $pythonScript = Join-Path $WindowsPath "Win_general\reloadsh.py"
 
     # 检查 Python 脚本是否存在
     if (-not (Test-Path $pythonScript)) {
@@ -204,6 +205,8 @@ function new_ {
         }
     }
 }
+
+
 
 # 设置命令别名
 Set-Alias -Name new -Value new_ -Force
