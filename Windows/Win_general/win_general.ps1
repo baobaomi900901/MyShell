@@ -8,11 +8,14 @@
 # Get-ChildItem Function: | Select-Object Name, Definition
 
 function reloadsh {
+    # 强制 PowerShell 使用 UTF-8 解码外部程序输出，并设置 Python 的 IO 编码
+    $OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $env:PYTHONIOENCODING = 'utf-8'
+
     # 计算基础路径
     $MyShellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
     $WindowsPath = Join-Path $MyShellPath "Windows"   # 根目录
     $jsonFile = Join-Path $WindowsPath "function_tracker.json"
-    # Python 脚本位于 Windows\Win_general\reloadsh.py
     $pythonScript = Join-Path $WindowsPath "Win_general\reloadsh.py"
 
     # 检查 Python 脚本是否存在
@@ -24,17 +27,11 @@ function reloadsh {
 
     Write-Host "🔍 调用 Python 脚本分析函数变更..." -ForegroundColor Cyan
 
-    # 创建临时文件用于捕获 stderr
     $tempStderr = [System.IO.Path]::GetTempFileName()
-
-    # 执行 Python 脚本，将 stderr 重定向到临时文件，stdout 捕获到变量
     $stdout = & python $pythonScript --windows-dir $WindowsPath --json-file $jsonFile 2> $tempStderr
-
-    # 读取 stderr 内容
     $stderr = Get-Content $tempStderr -Raw
     Remove-Item $tempStderr
 
-    # 检查退出码
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Python 脚本执行失败，退出码: $LASTEXITCODE" -ForegroundColor Red
         if ($stderr) {
@@ -49,10 +46,10 @@ function reloadsh {
         return
     }
 
-    # 将多行输出合并为单个字符串
     $scriptBlock = $stdout -join "`r`n"
     Invoke-Expression $scriptBlock
 }
+
 function hsh {
     Write-Host "内置方法:" -ForegroundColor Blue
     Write-Host "  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
