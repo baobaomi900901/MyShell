@@ -52,12 +52,18 @@ function tool_ {
 
     switch ($action) {
         "build-lite" {
-            $buildScriptPath = Join-Path $PSScriptRoot "build_lite.ps1"
-            if (Test-Path $buildScriptPath) {
-                . $buildScriptPath
-                Invoke-BuildLite
+            $pythonScript = Join-Path $PSScriptRoot "build_lite.py"
+            if (Test-Path $pythonScript) {
+                Write-Host "正在调用 Python 构建脚本..." -ForegroundColor Cyan
+                & python $pythonScript
+                
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Error "构建失败，退出代码: $LASTEXITCODE"
+                } else {
+                    Write-Host "构建完成！" -ForegroundColor Green
+                }
             } else {
-                Write-Error "找不到 build-lite 脚本: $buildScriptPath"
+                Write-Error "找不到 build_lite.py 脚本: $pythonScript"
             }
         }
 
