@@ -183,6 +183,7 @@ def main():
     ps_commands.append('Write-Host "✅ 已重新加载所有函数文件" -ForegroundColor Green')
 
     ps_commands.append('Write-Host "✅ reload完成！" -ForegroundColor Green')
+    ps_commands.append('Write-Host "✅ 请重新开启终端窗口, powershell 不支持新添加的函数热更新!!!" -ForegroundColor Green')
 
     # Output using safe_print (但强制 UTF-8 后直接 print 也行，保留 safe_print 作为保险)
     for line in ps_commands:
