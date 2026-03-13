@@ -100,19 +100,30 @@ if (Test-Path $functionsDir) {
         shell=True
     )
 
-    # 等待 JSON 文件生成并安装 Python 依赖
+    # 等待 JSON 文件生成并安装 Python 依赖（带检查，避免重复安装）
     json_file = os.path.join(docs_folder, "WindowsPowerShell", "MyShell", "Windows", "function_tracker.json")
     max_attempts = 5
     for attempt in range(max_attempts):
         if os.path.exists(json_file):
-            print("找到 function_tracker.json，开始安装 Python 依赖...")
+            print("找到 function_tracker.json，开始检查 Python 依赖...")
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 packages = data.get('pythonPackage', [])
                 if packages:
-                    print(f"需要安装的包: {packages}")
+                    print(f"需要检查的包: {packages}")
                     for pkg in packages:
+                        print(f"检查 {pkg}...")
+                        # 使用 pip show 判断包是否已安装（静默模式）
+                        check_result = subprocess.run(
+                            [sys.executable, "-m", "pip", "show", pkg],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL
+                        )
+                        if check_result.returncode == 0:
+                            print(f"✅ {pkg} 已安装，跳过。")
+                            continue
+
                         print(f"正在安装 {pkg}...")
                         result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", pkg])
                         if result.returncode == 0:
