@@ -6,6 +6,7 @@ import subprocess
 import json
 import sys
 import time
+import winreg
 from enum import Enum
 
 def normalize_lines(text):
@@ -24,6 +25,16 @@ def block_exists_in_file(file_content, block_content):
         if file_lines[i:i+len_block] == block_lines:
             return True
     return False
+
+def get_user_environment_variable(name):
+    """从 HKEY_CURRENT_USER\Environment 读取用户环境变量，不存在则返回 None"""
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
+        value, _ = winreg.QueryValueEx(key, name)
+        winreg.CloseKey(key)
+        return value
+    except FileNotFoundError:
+        return None
 
 class System(Enum):
     """操作系统类型枚举"""
@@ -60,6 +71,43 @@ if current_system == System.WINDOWS:
         print(f"创建自定义脚本目录: {myshell_windows}")
     else:
         print(f"自定义脚本目录已存在: {myshell_windows}")
+
+    # ====== 设置环境变量 MYSHELL（指向 MyShell 根目录）======
+    import winreg  # 用于读取注册表中的环境变量
+    def get_user_environment_variable(name):
+        """从 HKEY_CURRENT_USER\Environment 读取用户环境变量，不存在则返回 None"""
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
+            value, _ = winreg.QueryValueEx(key, name)
+            winreg.CloseKey(key)
+            return value
+        except FileNotFoundError:
+            return None
+
+    myshell_root = os.path.join(docs_folder, "WindowsPowerShell", "MyShell")
+    env_var_name = "MYSHELL"
+    desired_value = myshell_root
+
+    current_reg_value = get_user_environment_variable(env_var_name)
+    if current_reg_value != desired_value:
+        try:
+            subprocess.run(
+                ["setx", env_var_name, desired_value],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            if current_reg_value is None:
+                print(f"环境变量 {env_var_name} 已创建: {desired_value}")
+            else:
+                print(f"环境变量 {env_var_name} 已从 '{current_reg_value}' 更新为 '{desired_value}'")
+            # 更新当前进程的环境变量，以便后续操作可能用到
+            os.environ[env_var_name] = desired_value
+        except subprocess.CalledProcessError as e:
+            print(f"设置环境变量失败: {e.stderr}")
+    else:
+        print(f"环境变量 {env_var_name} 已正确设置，无需修改。")
+    # ====== 结束环境变量设置 ======
 
     # 定义要检查的核心代码块（不含注释，使用原始字符串避免转义警告）
     core_block = r"""$functionsDir = "$PSScriptRoot\MyShell\windows"
@@ -142,6 +190,7 @@ if (Test-Path $functionsDir) {
             else:
                 print("未找到 function_tracker.json，请确保已执行 reloadsh 后手动安装依赖。")
 
+                
 elif current_system == System.MACOS:
     # macOS 分支：初始化 shell 配置文件（以 zsh 为例）
     username = getpass.getuser()

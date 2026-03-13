@@ -5,3 +5,5 @@ config/game.json
 config/path.json
 temp/*
 test/*
+_tools/lite_setup/assets/*
+_tools/lite_setup/plugin/*
