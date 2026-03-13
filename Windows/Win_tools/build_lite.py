@@ -25,6 +25,7 @@ import shutil
 import urllib.request
 import configparser
 import re
+import ctypes
 from pathlib import Path
 import questionary
 
@@ -123,7 +124,7 @@ def ask_build_type():
 
 
 def get_git_info():
-    """获取当前 Git 分支名称和完整 commit 哈希值，返回 (branch, hash)"""
+    """获取当前 Git 分支名称和短 commit 哈希值（默认7位），返回 (branch, short_hash)"""
     try:
         # 获取分支名称（使用 utf-8 编码）
         branch_result = subprocess.run(
@@ -136,18 +137,18 @@ def get_git_info():
         )
         branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
 
-        # 获取完整 commit 哈希（使用 utf-8 编码）
+        # 获取短 commit 哈希（默认7位，Git 会自动加长以避免歧义）
         hash_result = subprocess.run(
-            ['git', 'rev-parse', 'HEAD'],
+            ['git', 'rev-parse', '--short', 'HEAD'],
             capture_output=True,
             text=True,
             encoding='utf-8',
             errors='replace',
             cwd=AOM_PATH
         )
-        commit_hash = hash_result.stdout.strip() if hash_result.returncode == 0 else "unknown"
+        short_hash = hash_result.stdout.strip() if hash_result.returncode == 0 else "unknown"
 
-        return branch, commit_hash
+        return branch, short_hash
     except Exception as e:
         print(f"获取 Git 信息失败: {e}")
         return "unknown", "unknown"
@@ -187,32 +188,69 @@ def fetch_newversion_from_url(url):
 
 def increment_version(version):
     """
-    递增版本号的最后一部分。
+    根据当前版本号生成下一个版本号，格式为四段数字（如 2.1.1.17）。
     规则：
-    - 如果包含 '-beta' 且后面跟数字，则数字加1。
-    - 否则按点号分割，最后一部分作为数字加1。
-    如果格式无法解析，返回原版本号。
+    - 如果版本号包含 '-beta' 后跟数字（如 '2.1.1-beta16'），则转换为 '2.1.1.17'（beta数字+1）。
+    - 否则按点号分割：
+        - 如果是三段数字（如 '2.1.1'），则在末尾添加 '.1' 得到 '2.1.1.1'。
+        - 如果是四段数字（如 '2.1.1.1'），则将最后一段加1，如 '2.1.1.2'。
+        - 如果超过四段，只保留前四段并递增第四段。
+    - 如果无法解析，尝试原逻辑作为后备，并打印警告。
     """
-    # 尝试匹配 -beta 后跟数字
-    beta_match = re.search(r'(.*-beta)(\d+)$', version)
+    version = version.strip()
+    
+    # 1. 处理 -beta 格式：X.Y.Z-betaN
+    beta_match = re.search(r'^(\d+\.\d+\.\d+)-beta(\d+)$', version)
     if beta_match:
-        prefix = beta_match.group(1)
-        num = int(beta_match.group(2))
-        new_num = num + 1
-        return f"{prefix}{new_num}"
-    # 否则按点号分割，最后一部分加1
+        base = beta_match.group(1)        # 如 '2.1.1'
+        beta_num = int(beta_match.group(2))  # 如 16
+        new_version = f"{base}.{beta_num + 1}"
+        print(f"检测到 -beta 格式，转换后版本: {new_version}")
+        return new_version
+
+    # 2. 处理普通点分数字
     parts = version.split('.')
-    if parts and parts[-1].isdigit():
-        last_num = int(parts[-1])
-        parts[-1] = str(last_num + 1)
-        return '.'.join(parts)
-    # 无法解析，返回原值
-    return version
+    # 检查是否所有部分都是数字（允许前三段+第四段数字）
+    if all(p.isdigit() for p in parts):
+        if len(parts) == 3:
+            # 三段，补 .1
+            new_version = f"{version}.1"
+            print(f"三段数字，补第四段为 1: {new_version}")
+            return new_version
+        elif len(parts) >= 4:
+            # 至少四段，取前四段，递增最后一段
+            major, minor, build, revision = parts[0], parts[1], parts[2], parts[3]
+            new_revision = int(revision) + 1
+            new_version = f"{major}.{minor}.{build}.{new_revision}"
+            print(f"四段数字，递增第四段: {new_version}")
+            return new_version
+        else:
+            # 不足三段，无法处理，警告并原样返回
+            print(f"警告: 版本号 '{version}' 格式异常（不足三段），将原样返回。")
+            return version
+    else:
+        # 包含非数字，尝试原逻辑作为后备
+        print(f"警告: 版本号 '{version}' 包含非数字，尝试原递增逻辑。")
+        # 原逻辑：匹配 -beta 后数字（但上面已处理，这里仅保留原逻辑的通用部分）
+        beta_match_old = re.search(r'(.*-beta)(\d+)$', version)
+        if beta_match_old:
+            prefix = beta_match_old.group(1)
+            num = int(beta_match_old.group(2))
+            new_num = num + 1
+            return f"{prefix}{new_num}"
+        parts = version.split('.')
+        if parts and parts[-1].isdigit():
+            last_num = int(parts[-1])
+            parts[-1] = str(last_num + 1)
+            return '.'.join(parts)
+        # 实在无法处理，返回原值
+        return version
 
 
 def run_build_exe():
     """
     直接运行 Build.exe，将终端交还给用户手动交互。
+    运行前临时将控制台代码页设为 GBK (936) 以解决中文乱码，运行后恢复。
     工作目录设为 AOM_PATH（与 PowerShell 脚本一致），不捕获输出，不自动输入。
     """
     if not os.path.exists(BUILD_EXE):
@@ -223,16 +261,31 @@ def run_build_exe():
     print("（终端已交给 Build.exe，请手动完成交互，完成后脚本将继续）")
     work_dir = AOM_PATH
 
+    # 保存当前控制台输出代码页，并临时设为 GBK (936)
+    old_cp = None
+    try:
+        kernel32 = ctypes.windll.kernel32
+        old_cp = kernel32.GetConsoleOutputCP()
+        # 设置为简体中文 GBK
+        kernel32.SetConsoleOutputCP(936)
+    except Exception as e:
+        print(f"警告: 无法设置控制台代码页，输出可能仍为乱码: {e}")
+
     try:
         result = subprocess.run([BUILD_EXE], cwd=work_dir)
-        if result.returncode == 0:
-            print("\nBuild.exe 执行成功！")
-            return True
-        else:
-            print(f"\nBuild.exe 执行失败，返回码: {result.returncode}")
-            return False
-    except Exception as e:
-        print(f"\n运行 Build.exe 异常: {e}")
+    finally:
+        # 恢复原代码页
+        if old_cp is not None:
+            try:
+                kernel32.SetConsoleOutputCP(old_cp)
+            except Exception:
+                pass
+
+    if result.returncode == 0:
+        print("\nBuild.exe 执行成功！")
+        return True
+    else:
+        print(f"\nBuild.exe 执行失败，返回码: {result.returncode}")
         return False
 
 
@@ -282,7 +335,6 @@ def main():
     branch, commit_hash = get_git_info()
 
     if build_type == "测试":
-        # 修改点：将分支和哈希用 _#_ 连接，整体用竖线分隔
         version_string = f"{timestamp}|{branch}_#_{commit_hash}"
         print("\n" + "=" * 40)
         print("生成的版本标识符（测试）:")
@@ -293,7 +345,6 @@ def main():
         if remote_version:
             incremented_version = increment_version(remote_version)
             print(f"原始版本: {remote_version}，递增后: {incremented_version}")
-            # 修改点：同样使用 _#_ 连接分支和哈希
             version_string = f"{incremented_version}|{branch}_#_{commit_hash}"
             print("\n" + "=" * 40)
             print("生成的版本标识符（正式版）:")
