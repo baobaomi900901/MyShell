@@ -56,7 +56,7 @@ function tool_ {
 
     switch ($action) {
         "build-lite" {
-            $pythonScript = Join-Path $PSScriptRoot "build_lite.py"
+            $pythonScript = Join-Path $PSScriptRoot "\src\build_lite.py"
             if (Test-Path $pythonScript) {
                 Write-Host "正在调用 Python 构建脚本..." -ForegroundColor Cyan
                 & python $pythonScript
@@ -73,7 +73,7 @@ function tool_ {
 
         "clean-image" {
             $targetPath = if ($extraArgs -and $extraArgs.Count -gt 0) { $extraArgs[0] } else { "." }
-            $cleanScriptPath = Join-Path $PSScriptRoot "clean-image.ps1"
+            $cleanScriptPath = Join-Path $PSScriptRoot "\src\clean-image.ps1"
             if (Test-Path $cleanScriptPath) {
                 . $cleanScriptPath
                 Invoke-CleanImage -Path $targetPath
@@ -83,7 +83,7 @@ function tool_ {
         }
 
         "license-lite" {
-            $pythonScript = Join-Path $PSScriptRoot "license_lite.py"
+            $pythonScript = Join-Path $PSScriptRoot "\src\license_lite.py"
             if (-not (Test-Path $pythonScript)) {
                 Write-Error "找不到 license_lite.py 脚本: $pythonScript"
                 return
@@ -114,7 +114,7 @@ function tool_ {
         }
 
         "license-rpa" {
-            $licenseRpaScriptPath = Join-Path $PSScriptRoot "license-rpa.ps1"
+            $licenseRpaScriptPath = Join-Path $PSScriptRoot "\src\license-rpa.ps1"
             if (Test-Path $licenseRpaScriptPath) {
                 . $licenseRpaScriptPath
                 Invoke-LicenseRpa -ExePath $rpaLicenseExe
@@ -124,7 +124,7 @@ function tool_ {
         }
 
         "set_lite_alias" {
-            $pythonScript = Join-Path $PSScriptRoot "set_lite_alias.py"
+            $pythonScript = Join-Path $PSScriptRoot "\src\set_lite_alias.py"
             if (Test-Path $pythonScript) {
                 python $pythonScript
             } else {
@@ -134,7 +134,7 @@ function tool_ {
 
         # 新增：直接调用 build_lite_setup.py
         "build_lite_setup" {
-            $pythonScript = Join-Path $PSScriptRoot "build_lite_setup.py"
+            $pythonScript = Join-Path $PSScriptRoot "\src\build_lite_setup.py"
             if (-not (Test-Path $pythonScript)) {
                 Write-Error "找不到 build_lite_setup.py 脚本: $pythonScript"
                 return
