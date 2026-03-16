@@ -7,4 +7,4 @@ temp/*
 test/*
 _tools/lite_setup/assets/*
 _tools/lite_setup/plugin/*
-*/__pycache__/*
+*.pyc
