@@ -1,34 +1,26 @@
-            Write-Host "使用方法:" -ForegroundColor Blue
-            Write-Host "  build-lite                     # 打包 KRPA Lite" -ForegroundColor Yellow
-            Write-Host "  build_lite_setup [参数]        # 直接运行 build_lite_setup.py，无参数时默认传入 'K-RPA Lite'" -ForegroundColor Yellow
-            Write-Host "  clean-image [路径]             # 清理指定路径下md文档中没有被引用的图片资源" -ForegroundColor Yellow
-            Write-Host "                                 # 默认路径为当前目录" -ForegroundColor Yellow
-            Write-Host "  license-lite [-root] <机器标识> # 打开 Lite 授权工具并自动完成机器标识输入、生成授权码" -ForegroundColor Yellow
-            Write-Host "  license-rpa                    # 打开 RPA 授权工具" -ForegroundColor Yellow
-            Write-Host "  set_lite_alias                 # 设置 lite 内置函数的别名" -ForegroundColor Yellow
 {
   "build-lite": {
-    "tpye":"",
-    "description" : "打包 KRPA Lite"
+    "script_path": ".\\src\\build_lite.py",
+    "description": "打包 KRPA Lite"
   },
   "build_lite_setup": {
-    "type":"",
-    "description" : "直接运行 build_lite_setup.py，无参数时默认传入 'K-RPA Lite'"
+    "script_path": ".\\src\\build_lite_setup.py",
+    "description": "直接运行 build_lite_setup.py，无参数时默认传入 'K-RPA Lite'"
   },
   "clean-image": {
-    "type":"",
-    "description" : "清理指定路径下md文档中没有被引用的图片资源; \r\n 默认路径为当前目录"
+    "script_path": "..\\..\\_tools\\cleanUnusedImages.js",
+    "description": "清理指定路径下md文档中没有被引用的图片资源; \r\n 默认路径为当前目录"
   },
   "license-lite": {
-    "type":"",
-    "description" : "打开 Lite 授权工具并自动完成机器标识输入、生成授权码"
+    "script_path": ".\\src\\license_lite.py",
+    "description": "打开 Lite 授权工具并自动完成机器标识输入、生成授权码"
   },
   "license-rpa": {
-    "type":"",
-    "description" : "打开 RPA 授权工具"
+    "script_path": ".\\src\\license-rpa.ps1",
+    "description": "打开 RPA 授权工具"
   },
   "set_lite_alias": {
-    "type":"",
-    "description" : "设置 lite 内置函数的别名"
+    "script_path": ".\\scr\\set_lite_alias.py",
+    "description": "设置 lite 内置函数的别名"
   }
 }
