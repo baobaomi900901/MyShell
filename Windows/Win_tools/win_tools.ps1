@@ -73,7 +73,7 @@ function tool_ {
 
         "clean-image" {
             $targetPath = if ($extraArgs -and $extraArgs.Count -gt 0) { $extraArgs[0] } else { "." }
-            $cleanScriptPath = Join-Path $PSScriptRoot "clean-image.ps1"
+            $cleanScriptPath = Join-Path $PSScriptRoot "clean_image.ps1"
             if (Test-Path $cleanScriptPath) {
                 . $cleanScriptPath
                 Invoke-CleanImage -Path $targetPath
