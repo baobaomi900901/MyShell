@@ -1,7 +1,9 @@
 ﻿# .\Windows\Win_general\win_cd.ps1
 # 快速目录跳转函数，调用 Python 脚本实现
 
+
 function cd_ {
+    # 用途: 用于 cd 到指定目录
     param (
         [Parameter(Position = 0)]
         [string]$action
