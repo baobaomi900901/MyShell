@@ -1,7 +1,7 @@
 ﻿# .\Windows\win_code.ps1
-# 用 vscode 打开指定文件夹
 
 function code_ () {
+    # 用途: vscode 打开指定文件夹
     param (
         [Parameter(Position = 0)]
         [ArgumentCompleter({

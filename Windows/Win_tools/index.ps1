@@ -7,6 +7,7 @@
 #   5. set_lite_alias: 设置 lite 内置函数的别名
 
 function tool_ {
+    # 用途: 工具函数, 详情可以 终端输入 tool_ 查看
     <#
     .SYNOPSIS
         多功能工具函数，支持打包、清理图片、生成别名、打开授权工具等操作。
