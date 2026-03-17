@@ -8,6 +8,7 @@
 # Get-ChildItem Function: | Select-Object Name, Definition
 
 function reloadsh {
+    # 用途: 重新加载 powershell 脚本方法
     <#
     .SYNOPSIS
         调用 reloadsh.py 并根据其退出码决定是否关闭当前 PowerShell 窗口。
@@ -47,6 +48,7 @@ function reloadsh {
 }
 
 function hsh {
+    # 用途: 描述内置方法
     Write-Host "内置方法:" -ForegroundColor Blue
     Write-Host "  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
     Write-Host "  remove_sh     # 删除别名或函数" -ForegroundColor Yellow
@@ -65,16 +67,15 @@ function hsh {
     Write-Host "  glocal       # git log origin/develop..HEAD --oneline " -ForegroundColor Yellow
 }
 
-function setsh { 
+function setsh {
+  # 用途: 打开 vscode 并切换到 MyShell 配置文件目录
   $shellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
   code $shellPath
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
 
-
-
-# 添加到您的 PowerShell Profile
 function type_ {
+    # 用途: 查看方法是否存在, type_ {方法名}
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Name
@@ -89,9 +90,9 @@ function type_ {
     }
 }
 
-# 默认执行 open .
 function op_ {
-        param(
+    # 用途: 执行 open .
+    param(
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Paths
     )
@@ -107,6 +108,7 @@ function op_ {
 }
 
 function now_ {
+    # 用途: 显示当前时间
     param(
         [string]$format = "default"
     )
@@ -132,6 +134,7 @@ function now_ {
 }
 
 function new_ {
+    # 用途: 新建文件夹或文件
     param(
         [Parameter(Mandatory=$true)]
         [string]$Name,
