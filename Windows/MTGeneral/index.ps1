@@ -277,8 +277,19 @@ function cd_ {
         [Parameter(Position = 0)]
         [string]$action
     )
+    
+    # 检查环境变量 MYSHELL 是否设置
+    $myshell = $env:MYSHELL
+    if (-not $myshell) {
+        Write-Host "❌ 环境变量 MYSHELL 未设置，无法定位 Python 脚本" -ForegroundColor Red
+        return
+    }
 
-    $scriptPath = Join-Path $PSScriptRoot "src\cd.py"
+    # 构建脚本路径：$myshell\_tools\_pythonScript\cd.py
+    $scriptPath = Join-Path $myshell "_tools"
+    $scriptPath = Join-Path $scriptPath "_pythonScript"
+    $scriptPath = Join-Path $scriptPath "cd.py"
+
     if (-not (Test-Path $scriptPath)) {
         Write-Host "❌ 找不到 Python 脚本: $scriptPath" -ForegroundColor Red
         return

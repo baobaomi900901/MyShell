@@ -1,6 +1,28 @@
 ﻿# .\Windows\Hooks\index.ps1
 # 作用: hooks_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
+# 辅助函数：读取并解析 info.json（支持以 # 开头的注释）
+function Get-HooksConfig {
+    param(
+        [string]$JsonPath
+    )
+    if (-not (Test-Path $JsonPath)) {
+        Write-Host "❌ 找不到配置文件: $JsonPath" -ForegroundColor Red
+        return $null
+    }
+    try {
+        $rawLines = Get-Content $JsonPath -Raw -Encoding UTF8 -ErrorAction Stop
+        # 移除以 # 开头的注释行（允许行前有空格）
+        $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        $config = $cleanJson | ConvertFrom-Json
+        return $config
+    }
+    catch {
+        Write-Host "❌ 解析 info.json 失败: $_" -ForegroundColor Red
+        return $null
+    }
+}
+
 function hooks_ {
     # 用途: 这是一个模板脚手架(可以忽略)
     # 启用对 -ErrorAction 等参数的处理
@@ -30,23 +52,10 @@ function hooks_ {
     }
 
     # --- 读取与解析配置文件 info.json ---
-    # 加载配置文件
-    $jsonPath = Join-Path $scriptDir "info.json"  
-    # 若配置文件不存在，则提示用户创建配置文件
-    if (-not (Test-Path $jsonPath)) {
-        Write-Host "❌ 找不到配置文件: $jsonPath" -ForegroundColor Red
-        return
-    }
-    # 解析配置文件
-    try {
-        $rawLines = Get-Content $jsonPath -Raw -Encoding UTF8
-        $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
-        $config = $cleanJson | ConvertFrom-Json
-    }
-    catch {
-        Write-Host "❌ 解析 info.json 失败: $_" -ForegroundColor Red
-        return
-    }
+    $jsonPath = Join-Path $scriptDir "info.json"
+    $config = Get-HooksConfig -JsonPath $jsonPath
+    if (-not $config) { return }
+
     # 显示可用命令列表
     if (-not $Command) {
         Write-Host "可用目录:" -ForegroundColor Green
@@ -57,6 +66,7 @@ function hooks_ {
         }
         return
     }
+
     # --- 执行命令 ---
     if (-not $config.$Command) {
         Write-Host "❌ 未知命令: $Command" -ForegroundColor Red
@@ -64,13 +74,26 @@ function hooks_ {
         return
     }
 
-    $scriptPath = $config.$Command.script_path                  # 脚本路径
+    $scriptPath = $config.$Command.script_path                  # 原始脚本路径
     $description = $config.$Command.description                 # 命令描述
+
+    # --- 处理环境变量占位符 @MYSHELL ---
+    if ($scriptPath -like '@MYSHELL*') {
+        $myshell = $env:MYSHELL
+        if (-not $myshell) {
+            Write-Host "❌ 环境变量 MYSHELL 未设置，无法解析路径: $scriptPath" -ForegroundColor Red
+            return
+        }
+        # 将开头的 @MYSHELL 替换为实际环境变量值
+        $scriptPath = $scriptPath -replace '^@MYSHELL', $myshell
+        Write-Host "🔧 已替换 @MYSHELL => $myshell" -ForegroundColor Gray
+    }
 
     # 若脚本路径不是绝对路径，则尝试从脚本目录查找
     if (-not [System.IO.Path]::IsPathRooted($scriptPath)) {
         $scriptPath = Join-Path $scriptDir $scriptPath
     }
+
     # 若脚本文件不存在，则提示用户检查路径
     if (-not (Test-Path $scriptPath)) {
         Write-Host "❌ 脚本文件不存在: $scriptPath" -ForegroundColor Red
@@ -113,29 +136,18 @@ function hooks_ {
     }
 }
 
-# --- Tab 补全器保持不变 ---
+# --- Tab 补全器（使用相同的配置读取函数）---
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) {
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 }
-$jsonPath = Join-Path $scriptDir "info.json"
-$script:jsonPathForCompletion = $jsonPath
+$script:jsonPathForCompletion = Join-Path $scriptDir "info.json"
 
 Register-ArgumentCompleter -CommandName hooks_ -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-    if (-not (Test-Path $script:jsonPathForCompletion)) {
-        return $null
-    }
-
-    try {
-        $rawLines = Get-Content $script:jsonPathForCompletion -Raw -Encoding UTF8 -ErrorAction Stop
-        $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
-        $config = $cleanJson | ConvertFrom-Json
-    }
-    catch {
-        return $null
-    }
+    $config = Get-HooksConfig -JsonPath $script:jsonPathForCompletion
+    if (-not $config) { return $null }
 
     $allCommands = $config.PSObject.Properties.Name
     $allCommands | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
