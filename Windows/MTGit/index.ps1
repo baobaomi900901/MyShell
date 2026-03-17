@@ -1,4 +1,4 @@
-﻿# .\Windows\win_git.ps1
+﻿# .\Windows\MTGit\index.ps1
 # Git 简写命令
 
 function ga {

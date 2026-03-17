@@ -1,4 +1,4 @@
-﻿# .\Windows\win_password.ps1
+﻿# .\Windows\MTPW\index.ps1
 # 查询 密码 到剪切板
 
 function pw_ {

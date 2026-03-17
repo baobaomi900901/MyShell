@@ -1,4 +1,4 @@
-﻿# .\Windows\win_game.ps1
+﻿# .\Windows\MTGame\index.ps1
 # 游戏存档备份管理函数
 
 function game_ {

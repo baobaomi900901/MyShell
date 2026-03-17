@@ -1,4 +1,4 @@
-﻿# .\Windows\win_code.ps1
+﻿# .\Windows\MTCode\index.ps1
 
 function code_ () {
     # 用途: vscode 打开指定文件夹

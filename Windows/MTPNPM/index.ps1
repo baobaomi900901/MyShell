@@ -1,4 +1,4 @@
-# .\Windows\win_pnpm.ps1
+# .\Windows\MTPNPM\index.ps1
 # pnpm 的快捷指令
 
 function pd { 
