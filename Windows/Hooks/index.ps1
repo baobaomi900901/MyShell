@@ -2,7 +2,10 @@
 # 作用: hooks_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
 function hooks_ {
+    # 启用对 -ErrorAction 等参数的处理
     [CmdletBinding()]
+
+    # 定义参数
     param(
         [Parameter(Position = 0, Mandatory = $false)]
         [string]$Command,
@@ -10,10 +13,13 @@ function hooks_ {
         [string[]]$ScriptArgs
     )
 
+    # 设置输出编码为 UTF-8
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
 
-    $scriptDir = $PSScriptRoot
+    $scriptDir = $PSScriptRoot  # 脚本所在目录
+
+    # 如果未指定脚本目录，则尝试从当前工作目录查找
     if (-not $scriptDir) {
         $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
         if (-not $scriptDir) {
@@ -22,13 +28,15 @@ function hooks_ {
         }
     }
 
-    $jsonPath = Join-Path $scriptDir "info.json"
-
+    # --- 读取与解析配置文件 info.json ---
+    # 加载配置文件
+    $jsonPath = Join-Path $scriptDir "info.json"  
+    # 若配置文件不存在，则提示用户创建配置文件
     if (-not (Test-Path $jsonPath)) {
         Write-Host "❌ 找不到配置文件: $jsonPath" -ForegroundColor Red
         return
     }
-
+    # 解析配置文件
     try {
         $rawLines = Get-Content $jsonPath -Raw -Encoding UTF8
         $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
@@ -38,7 +46,7 @@ function hooks_ {
         Write-Host "❌ 解析 info.json 失败: $_" -ForegroundColor Red
         return
     }
-
+    # 显示可用命令列表
     if (-not $Command) {
         Write-Host "可用目录:" -ForegroundColor Green
         $config.PSObject.Properties | ForEach-Object {
@@ -48,37 +56,39 @@ function hooks_ {
         }
         return
     }
-
+    # --- 执行命令 ---
     if (-not $config.$Command) {
         Write-Host "❌ 未知命令: $Command" -ForegroundColor Red
         Write-Host "可用命令: $($config.PSObject.Properties.Name -join ', ')" -ForegroundColor Yellow
         return
     }
 
-    $scriptPath = $config.$Command.script_path
-    $description = $config.$Command.description
+    $scriptPath = $config.$Command.script_path                  # 脚本路径
+    $description = $config.$Command.description                 # 命令描述
 
+    # 若脚本路径不是绝对路径，则尝试从脚本目录查找
     if (-not [System.IO.Path]::IsPathRooted($scriptPath)) {
         $scriptPath = Join-Path $scriptDir $scriptPath
     }
-
+    # 若脚本文件不存在，则提示用户检查路径
     if (-not (Test-Path $scriptPath)) {
         Write-Host "❌ 脚本文件不存在: $scriptPath" -ForegroundColor Red
         return
     }
 
-    Write-Host "▶️ 执行命令 '$Command': $description" -ForegroundColor Cyan
+    Write-Host "▶️ 执行命令 '$Command': $description" -ForegroundColor Cyan    # 显示执行信息
 
-    $extension = [System.IO.Path]::GetExtension($scriptPath).ToLower()
+    $extension = [System.IO.Path]::GetExtension($scriptPath).ToLower()         # 脚本扩展名
     switch ($extension) {
         '.py'  { $interpreter = 'python' }
         '.js'  { $interpreter = 'node' }
         default {
-            Write-Host "❌ 不支持的脚本类型: $extension" -ForegroundColor Red
+            Write-Host "❌ 不支持的脚本类型: $extension" -ForegroundColor Red     # 未知脚本类型
             return
         }
     }
 
+    # 检查是否已安装 interpreter
     if (-not (Get-Command $interpreter -ErrorAction SilentlyContinue)) {
         Write-Host "❌ 未找到 $interpreter，请确保已安装并加入 PATH" -ForegroundColor Red
         return
