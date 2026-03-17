@@ -46,25 +46,76 @@ function reloadsh {
         [Environment]::Exit(0)  # 结束当前 PowerShell 进程，从而关闭窗口
     }
 }
-
+# 用途: 描述内置方法
 function hsh {
-    # 用途: 描述内置方法
-    Write-Host "内置方法:" -ForegroundColor Blue
-    Write-Host "  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件" -ForegroundColor Yellow
-    Write-Host "  remove_sh     # 删除别名或函数" -ForegroundColor Yellow
-    Write-Host "  type_         # 查看 cd_ 方法是否存在" -ForegroundColor Yellow
-    Write-Host "  cd_           # 切换到指定目录" -ForegroundColor Yellow
-    Write-Host "  code_         # 打开 vscode 并切换到指定目录" -ForegroundColor Yellow
-    Write-Host "  tool_         # 工具类指令" -ForegroundColor Yellow
-    Write-Host "  op_           # 执行 open ." -ForegroundColor Yellow
-    Write-Host "  new_          # 新建文件夹或文件 " -ForegroundColor Yellow
-    Write-Host "git相关操作:" -ForegroundColor Blue
-    Write-Host "  gs            # git status" -ForegroundColor Yellow
-    Write-Host "  gcmt          # git commit -m" -ForegroundColor Yellow
-    Write-Host "  ga            # git add" -ForegroundColor Yellow
-    Write-Host "  gpr           # git pull" -ForegroundColor Yellow
-    Write-Host "  gpo           # git push" -ForegroundColor Yellow
-    Write-Host "  glocal       # git log origin/develop..HEAD --oneline " -ForegroundColor Yellow
+    <#
+    .SYNOPSIS
+        列出所有内置方法及其描述。
+    .DESCRIPTION
+        从 function_tracker.json 中读取函数名称和描述，并格式化打印。
+    #>
+    
+    # 检查环境变量
+    if (-not $env:myshell) {
+        Write-Error "环境变量 'myshell' 未设置，无法定位 function_tracker.json。"
+        return
+    }
+
+    $jsonPath = Join-Path $env:myshell "Windows\function_tracker.json"
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Error "找不到 function_tracker.json，预期路径：$jsonPath"
+        return
+    }
+
+    try {
+        # 以 UTF8 编码读取原始内容
+        $content = Get-Content $jsonPath -Raw -Encoding UTF8
+
+        # 移除可能的 BOM（U+FEFF）
+        if ($content.Length -gt 0 -and $content[0] -eq [char]0xFEFF) {
+            $content = $content.Substring(1)
+        }
+
+        # 尝试解析 JSON
+        $json = $content | ConvertFrom-Json
+    } catch {
+        Write-Error "无法解析 JSON 文件：$_"
+        Write-Host "文件内容预览（前200字符）：" -ForegroundColor Yellow
+        Write-Host $content.Substring(0, [Math]::Min(200, $content.Length))
+        return
+    }
+
+    # 提取函数描述（仅当 description 不为空）
+    $functions = @()
+    if ($json.function) {
+        $json.function.PSObject.Properties | ForEach-Object {
+            $name = $_.Name
+            $desc = $_.Value.description
+            if ($desc -and $desc -ne '') {
+                $functions += [PSCustomObject]@{
+                    Name = $name
+                    Description = $desc
+                }
+            }
+        }
+    }
+
+    if ($functions.Count -eq 0) {
+        Write-Host "没有找到带有描述的内置方法。" -ForegroundColor Yellow
+        return
+    }
+
+    # 计算最大函数名长度（用于对齐）
+    $maxLen = ($functions | ForEach-Object { $_.Name.Length } | Measure-Object -Maximum).Maximum
+
+    Write-Host "内置方法:" -ForegroundColor Cyan
+
+    foreach ($f in $functions) {
+        # 左对齐函数名，右侧填充空格至 maxLen+2，然后加上 "# " 和描述
+        $line = "  " + $f.Name.PadRight($maxLen + 2) + "# " + $f.Description
+        Write-Host $line -ForegroundColor Yellow
+    }
 }
 
 function setsh {
