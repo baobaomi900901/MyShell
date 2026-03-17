@@ -1,6 +1,6 @@
 # Myshell/MacOS/mac_cd.zsh
 
-cd_() {
+cd_123() {
     local config_file="$HOME/MyShell/config/path.json"
     
     if [[ ! -f "$config_file" ]]; then
