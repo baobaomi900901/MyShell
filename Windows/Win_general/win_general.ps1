@@ -8,46 +8,42 @@
 # Get-ChildItem Function: | Select-Object Name, Definition
 
 function reloadsh {
-    # 强制 PowerShell 使用 UTF-8 解码外部程序输出，并设置 Python 的 IO 编码
-    $OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $env:PYTHONIOENCODING = 'utf-8'
+    <#
+    .SYNOPSIS
+        调用 reloadsh.py 并根据其退出码决定是否关闭当前 PowerShell 窗口。
+    #>
+    $scriptDir = $PSScriptRoot
+    if (-not $scriptDir) {
+        Write-Error "无法获取脚本所在目录。请确保函数定义在 .ps1 文件中并通过点 source 方式加载。"
+        return
+    }
 
-    # 计算基础路径
-    $MyShellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
-    $WindowsPath = Join-Path $MyShellPath "Windows"   # 根目录
-    $jsonFile = Join-Path $WindowsPath "function_tracker.json"
-    $pythonScript = Join-Path $WindowsPath "Win_general\reloadsh.py"
-
-    # 检查 Python 脚本是否存在
+    $pythonScript = Join-Path $scriptDir "src\reloadsh.py"
     if (-not (Test-Path $pythonScript)) {
-        Write-Host "❌ 找不到 Python 脚本: $pythonScript" -ForegroundColor Red
-        Write-Host "请确保文件位于: $pythonScript" -ForegroundColor Yellow
+        Write-Error "找不到 reloadsh.py，预期路径：$pythonScript"
         return
     }
 
-    Write-Host "🔍 调用 Python 脚本分析函数变更..." -ForegroundColor Cyan
-
-    $tempStderr = [System.IO.Path]::GetTempFileName()
-    $stdout = & python $pythonScript --windows-dir $WindowsPath --json-file $jsonFile 2> $tempStderr
-    $stderr = Get-Content $tempStderr -Raw
-    Remove-Item $tempStderr
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Python 脚本执行失败，退出码: $LASTEXITCODE" -ForegroundColor Red
-        if ($stderr) {
-            Write-Host "错误信息:" -ForegroundColor Red
-            Write-Host $stderr -ForegroundColor Red
-        }
+    # 检查环境变量 $env:myshell 是否存在
+    if (-not $env:myshell) {
+        Write-Error "环境变量 'myshell' 未设置，无法确定 Windows 目录和 JSON 文件路径。"
         return
     }
 
-    if (-not $stdout) {
-        Write-Host "❌ Python 脚本未返回任何命令" -ForegroundColor Red
-        return
-    }
+    # 构建参数路径
+    $windowsDir = Join-Path $env:myshell "windows"
+    $jsonFile = Join-Path $env:myshell "windows\function_tracker.json"
 
-    $scriptBlock = $stdout -join "`r`n"
-    Invoke-Expression $scriptBlock
+    # 调用 Python 脚本，传递必需参数，同时保留用户可能传入的额外参数
+    & python $pythonScript --windows-dir "$windowsDir" --json-file "$jsonFile" @args
+    $exitCode = $LASTEXITCODE
+
+    # 如果退出码为 1，表示用户选择了 Yes 并希望关闭当前窗口
+    if ($exitCode -eq 1) {
+        Write-Host "正在关闭当前窗口..."
+        Start-Sleep -Seconds 1  # 让用户看到最后的消息
+        [Environment]::Exit(0)  # 结束当前 PowerShell 进程，从而关闭窗口
+    }
 }
 
 function hsh {
