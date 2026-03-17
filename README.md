@@ -32,29 +32,28 @@
 
 3.  在 Microsoft.PowerShell_profile.ps1 中添加以下内容
 
-        ```shell
+````shell
 
 C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 
 $functionsDir = "$PSScriptRoot\MyShell\windows"
 if (Test-Path $functionsDir) {
-Get-ChildItem -Path $functionsDir -Recurse -Filter \*.ps1 -File | ForEach-Object {
-. $\_.FullName
-}
+   Get-ChildItem -Path $functionsDir -Recurse -Filter \*.ps1 -File | ForEach-Object {
+   . $\_.FullName
+   }
 }
 
-    ```
-
-    ```
+ ```
 
 4.  终端运行命令, 使配置生效 ( 此命令用于 reload 脚本)
 
-    ```shell
-    . $PROFILE
-    ```
+ ```shell
+ . $PROFILE
+ ```
 
 5.  终端运行, 查看相关指令
 
-    ```shell
-    hsh
-    ```
+ ```shell
+ hsh
+ ```
+````
