@@ -1,0 +1,22 @@
+﻿{
+  "langCN": {
+    "win": "D:\\Code\\aom\\KingAutomate\\Res\\chinese.json",
+    "mac": null,
+    "description": "打开 CN 语言包"
+  },
+  "langEN": {
+    "win": "D:\\Code\\aom\\KingAutomate\\Res\\english.json",
+    "mac": null,
+    "description": "打开 EN 语言包"
+  },
+  "ErrorMssage": {
+    "win": "D:\\Code\\aom\\VueCodeBase\\vue-king-automate\\public\\js\\errorPatterns.js",
+    "mac": null,
+    "description": "打开 错误信息"
+  },
+  "alias": {
+    "win": "D:\\Code\\aom\\KingAutomate\\Res\\FunctionSetting.json",
+    "mac": null,
+    "description": "打开 函数别名与设置"
+  }
+}
