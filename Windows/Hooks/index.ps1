@@ -2,6 +2,7 @@
 # 作用: hooks_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
 function hooks_ {
+    # 用途: 这是一个模板脚手架(可以忽略)
     # 启用对 -ErrorAction 等参数的处理
     [CmdletBinding()]
 
