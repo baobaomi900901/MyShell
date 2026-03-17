@@ -102,15 +102,35 @@ function hooks_ {
 
     Write-Host "▶️ 执行命令 '$Command': $description" -ForegroundColor Cyan    # 显示执行信息
 
-    $extension = [System.IO.Path]::GetExtension($scriptPath).ToLower()         # 脚本扩展名
+    $extension = [System.IO.Path]::GetExtension($scriptPath).ToLower()
     switch ($extension) {
         '.py'  { $interpreter = 'python' }
         '.js'  { $interpreter = 'node' }
+        '.ps1' {
+            # 直接调用 PowerShell 脚本（当前会话中执行）
+            Write-Host "🔧 执行: & $scriptPath $ScriptArgs" -ForegroundColor Gray
+            try {
+                & $scriptPath @ScriptArgs
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -ne 0) {
+                    throw "脚本执行失败，退出码: $exitCode"
+                }
+                else {
+                    Write-Host "✅ 脚本执行成功" -ForegroundColor Green
+                }
+            }
+            catch {
+                Write-Host "❌ 执行异常: $_" -ForegroundColor Red
+                return
+            }
+            return  # 避免执行后续通用代码
+        }
         default {
-            Write-Host "❌ 不支持的脚本类型: $extension" -ForegroundColor Red     # 未知脚本类型
+            Write-Host "❌ 不支持的脚本类型: $extension" -ForegroundColor Red
             return
         }
     }
+
 
     # 检查是否已安装 interpreter
     if (-not (Get-Command $interpreter -ErrorAction SilentlyContinue)) {

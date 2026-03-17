@@ -6,5 +6,9 @@
   "fun2": {
     "script_path": ".\\src\\fun2.js",
     "description": "这是我的第二个方法"
+  },
+  "fun3": {
+    "script_path": ".\\src\\fun3.ps1",
+    "description": "这是我的第三个方法"
   }
 }
