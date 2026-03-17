@@ -3,6 +3,7 @@ function_tracker.json
 config/password.json
 config/game.json
 config/path.json
+config/path_code.json
 temp/*
 test/*
 _tools/lite_setup/assets/*
