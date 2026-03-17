@@ -11,8 +11,8 @@ from pathlib import Path
 try:
     import keyboard
 except ImportError:
-    print("错误：需要 'keyboard' 库来模拟按键。请执行 'pip install keyboard' 安装。", file=sys.stderr)
-    sys.exit(1)
+    print("缺少 keyboard 模块，请执行 pip install keyboard")
+    sys.exit(10)
 
 # ----------------------------------------------------------------------
 # 函数扫描：从 PowerShell 脚本中提取函数名和描述
