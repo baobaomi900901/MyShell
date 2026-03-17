@@ -10,5 +10,9 @@
   "fun3": {
     "script_path": ".\\src\\fun3.ps1",
     "description": "这是我的第三个方法"
+  },
+  "fun4": {
+    "script_path": "@MYSHELL\\_tools\\_pythonScript\\fun4.ps1",
+    "description": "这是我的第4个方法"
   }
 }

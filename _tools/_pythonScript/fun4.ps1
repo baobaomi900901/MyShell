@@ -1,6 +1,6 @@
 ﻿# .\src\fun3.ps1
 
-function fun3{
+function fun4{
     param(
         [string]$Message = "默认消息",
         [switch]$Force

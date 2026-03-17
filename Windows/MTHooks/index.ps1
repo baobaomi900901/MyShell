@@ -3,13 +3,13 @@
 
 # 辅助函数：读取并解析 info.json（支持以 # 开头的注释）
 function Get-HooksConfig {
-    param(
-        [string]$JsonPath
-    )
+    param([string]$JsonPath)
+
     if (-not (Test-Path $JsonPath)) {
-        Write-Host "❌ 找不到配置文件: $JsonPath" -ForegroundColor Red
+        Write-Error "找不到配置文件: $JsonPath"
         return $null
     }
+
     try {
         $rawLines = Get-Content $JsonPath -Raw -Encoding UTF8 -ErrorAction Stop
         # 移除以 # 开头的注释行（允许行前有空格）
@@ -18,17 +18,63 @@ function Get-HooksConfig {
         return $config
     }
     catch {
-        Write-Host "❌ 解析 info.json 失败: $_" -ForegroundColor Red
+        Write-Error "解析 info.json 失败: $_"
         return $null
     }
 }
 
-function hooks_ {
-    # 用途: 这是一个模板脚手架(可以忽略)
-    # 启用对 -ErrorAction 等参数的处理
-    [CmdletBinding()]
+# 内部函数：解析脚本路径，支持默认约定和 @MYSHELL 占位符
+function Resolve-ScriptPath {
+    param(
+        [string]$Command,
+        [string]$ConfiguredPath,          # 可能为 $null 或空
+        [string]$ScriptDir,
+        [string]$Extension                 # 如 '.ps1'
+    )
 
-    # 定义参数
+    # 若未配置路径，则使用默认路径: .\src\<Command><Extension>
+    if ([string]::IsNullOrEmpty($ConfiguredPath)) {
+        $resolved = Join-Path $ScriptDir "src" "$Command$Extension"
+        Write-Verbose "未配置 script_path，使用默认路径: $resolved"
+        return $resolved
+    }
+
+    $path = $ConfiguredPath
+
+    # 处理环境变量占位符 @MYSHELL
+    if ($path -like '@MYSHELL*') {
+        $myshell = $env:MYSHELL
+        if (-not $myshell) {
+            throw "环境变量 MYSHELL 未设置，无法解析路径: $path"
+        }
+        $path = $path -replace '^@MYSHELL', $myshell
+        Write-Verbose "已替换 @MYSHELL => $myshell"
+    }
+
+    # 若非绝对路径，则基于脚本目录拼接
+    if (-not [System.IO.Path]::IsPathRooted($path)) {
+        $path = Join-Path $ScriptDir $path
+    }
+
+    return $path
+}
+
+function hooks_ {
+    <#
+    .SYNOPSIS
+        执行由 info.json 定义的命令脚本。
+    .DESCRIPTION
+        根据第一个参数查找 info.json 中对应的命令，执行关联的脚本（支持 .ps1, .py, .js）。
+        若未提供命令，则显示所有可用命令列表。
+    .PARAMETER Command
+        要执行的命令名称（对应 info.json 中的键）。
+    .PARAMETER ScriptArgs
+        传递给目标脚本的额外参数。
+    .EXAMPLE
+        hooks_                      # 列出所有命令
+        hooks_ fun3 "Hello" -Force  # 执行 fun3 命令，传递参数
+    #>
+    [CmdletBinding()]
     param(
         [Parameter(Position = 0, Mandatory = $false)]
         [string]$Command,
@@ -36,132 +82,136 @@ function hooks_ {
         [string[]]$ScriptArgs
     )
 
-    # 设置输出编码为 UTF-8
+    # 设置输出编码
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
 
-    $scriptDir = $PSScriptRoot  # 脚本所在目录
-
-    # 如果未指定脚本目录，则尝试从当前工作目录查找
+    $scriptDir = $PSScriptRoot
     if (-not $scriptDir) {
         $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
         if (-not $scriptDir) {
-            Write-Host "❌ 无法确定脚本目录" -ForegroundColor Red
+            Write-Error "无法确定脚本目录"
             return
         }
     }
 
-    # --- 读取与解析配置文件 info.json ---
+    # 读取配置
     $jsonPath = Join-Path $scriptDir "info.json"
     $config = Get-HooksConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
-    # 显示可用命令列表
+    # 无命令：显示列表
     if (-not $Command) {
-        Write-Host "可用目录:" -ForegroundColor Green
-        $config.PSObject.Properties | ForEach-Object {
+        Write-Host "可用命令:" -ForegroundColor Green
+        $config.PSObject.Properties | Sort-Object Name | ForEach-Object {
             $cmdName = $_.Name
             $desc = $_.Value.description
-            Write-Host ("    {0,-20} - {1}" -f $cmdName, $desc)
+            $pathInfo = if ($_.Value.script_path) { " ($($_.Value.script_path))" } else { " (默认 src\$cmdName.ps1)" }
+            Write-Host ("    {0,-20} - {1}{2}" -f $cmdName, $desc, $pathInfo)
         }
         return
     }
 
-    # --- 执行命令 ---
+    # 检查命令是否存在
     if (-not $config.$Command) {
-        Write-Host "❌ 未知命令: $Command" -ForegroundColor Red
+        Write-Error "未知命令: $Command"
         Write-Host "可用命令: $($config.PSObject.Properties.Name -join ', ')" -ForegroundColor Yellow
         return
     }
 
-    $scriptPath = $config.$Command.script_path                  # 原始脚本路径
-    $description = $config.$Command.description                 # 命令描述
+    $cmdConfig = $config.$Command
+    $configuredPath = $cmdConfig.script_path
+    $description = $cmdConfig.description
 
-    # --- 处理环境变量占位符 @MYSHELL ---
-    if ($scriptPath -like '@MYSHELL*') {
-        $myshell = $env:MYSHELL
-        if (-not $myshell) {
-            Write-Host "❌ 环境变量 MYSHELL 未设置，无法解析路径: $scriptPath" -ForegroundColor Red
-            return
-        }
-        # 将开头的 @MYSHELL 替换为实际环境变量值
-        $scriptPath = $scriptPath -replace '^@MYSHELL', $myshell
-        Write-Host "🔧 已替换 @MYSHELL => $myshell" -ForegroundColor Gray
+    # 解析脚本路径（默认扩展名根据配置或约定？此处先固定为 .ps1，但可根据实际需要扩展）
+    # 简单起见：若未配置路径，默认为 .ps1；若配置了路径，则根据扩展名判断。
+    # 我们可以在解析后根据实际文件扩展名决定执行方式，而不是预先假定。
+    try {
+        $scriptPath = Resolve-ScriptPath -Command $Command -ConfiguredPath $configuredPath -ScriptDir $scriptDir -Extension '.ps1'
     }
-
-    # 若脚本路径不是绝对路径，则尝试从脚本目录查找
-    if (-not [System.IO.Path]::IsPathRooted($scriptPath)) {
-        $scriptPath = Join-Path $scriptDir $scriptPath
-    }
-
-    # 若脚本文件不存在，则提示用户检查路径
-    if (-not (Test-Path $scriptPath)) {
-        Write-Host "❌ 脚本文件不存在: $scriptPath" -ForegroundColor Red
+    catch {
+        Write-Error $_.Exception.Message
         return
     }
 
-    Write-Host "▶️ 执行命令 '$Command': $description" -ForegroundColor Cyan    # 显示执行信息
+    # 检查脚本是否存在
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "脚本文件不存在: $scriptPath"
+        Write-Host "  请检查 info.json 中的 script_path 配置，或确保默认路径 src\$Command.ps1 存在。" -ForegroundColor Yellow
+        return
+    }
 
+    Write-Host "▶️ 执行命令 '$Command': $description" -ForegroundColor Cyan
+
+    # 根据文件扩展名选择执行方式
     $extension = [System.IO.Path]::GetExtension($scriptPath).ToLower()
     switch ($extension) {
-        '.py'  { $interpreter = 'python' }
-        '.js'  { $interpreter = 'node' }
         '.ps1' {
-            # 直接调用 PowerShell 脚本（当前会话中执行）
             Write-Host "🔧 执行: & $scriptPath $ScriptArgs" -ForegroundColor Gray
             try {
                 & $scriptPath @ScriptArgs
                 $exitCode = $LASTEXITCODE
                 if ($exitCode -ne 0) {
-                    throw "脚本执行失败，退出码: $exitCode"
+                    throw "脚本退出码: $exitCode"
                 }
-                else {
-                    Write-Host "✅ 脚本执行成功" -ForegroundColor Green
-                }
+                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
             }
             catch {
-                Write-Host "❌ 执行异常: $_" -ForegroundColor Red
+                Write-Error "执行异常: $_"
+                # 保留退出码以便外部感知
+                $global:LASTEXITCODE = 1
+            }
+        }
+        '.py' {
+            $interpreter = 'python'
+            if (-not (Get-Command $interpreter -ErrorAction SilentlyContinue)) {
+                Write-Error "未找到 $interpreter，请确保已安装并加入 PATH"
                 return
             }
-            return  # 避免执行后续通用代码
+            Write-Host "🔧 执行: $interpreter $scriptPath $ScriptArgs" -ForegroundColor Gray
+            try {
+                & $interpreter $scriptPath $ScriptArgs
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -ne 0) {
+                    throw "脚本退出码: $exitCode"
+                }
+                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
+            }
+            catch {
+                Write-Error "执行异常: $_"
+                $global:LASTEXITCODE = 1
+            }
         }
+        '.js' {
+            $interpreter = 'node'
+            if (-not (Get-Command $interpreter -ErrorAction SilentlyContinue)) {
+                Write-Error "未找到 $interpreter，请确保已安装并加入 PATH"
+                return
+            }
+            Write-Host "🔧 执行: $interpreter $scriptPath $ScriptArgs" -ForegroundColor Gray
+            try {
+                & $interpreter $scriptPath $ScriptArgs
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -ne 0) {
+                    throw "脚本退出码: $exitCode"
+                }
+                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
+            }
+            catch {
+                Write-Error "执行异常: $_"
+                $global:LASTEXITCODE = 1
+            }
+        }
+        # 可按需添加其他类型，如 '.bat', '.cmd', '.exe'
         default {
-            Write-Host "❌ 不支持的脚本类型: $extension" -ForegroundColor Red
-            return
+            Write-Error "不支持的脚本类型: $extension (文件: $scriptPath)"
         }
-    }
-
-
-    # 检查是否已安装 interpreter
-    if (-not (Get-Command $interpreter -ErrorAction SilentlyContinue)) {
-        Write-Host "❌ 未找到 $interpreter，请确保已安装并加入 PATH" -ForegroundColor Red
-        return
-    }
-
-    Write-Host "🔧 执行: $interpreter $scriptPath $ScriptArgs" -ForegroundColor Gray
-
-    try {
-        & $interpreter $scriptPath $ScriptArgs
-        $exitCode = $LASTEXITCODE
-        if ($exitCode -ne 0) {
-            throw "脚本执行失败，退出码: $exitCode"
-        }
-        else {
-            Write-Host "✅ 脚本执行成功" -ForegroundColor Green
-        }
-    }
-    catch {
-        Write-Host "❌ 执行异常: $_" -ForegroundColor Red
-        return
     }
 }
 
-# --- Tab 补全器（使用相同的配置读取函数）---
-$scriptDir = $PSScriptRoot
-if (-not $scriptDir) {
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-}
-$script:jsonPathForCompletion = Join-Path $scriptDir "info.json"
+# --- Tab 补全器 ---
+$scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$script:jsonPathForCompletion = Join-Path $scriptDirForCompletion "info.json"
 
 Register-ArgumentCompleter -CommandName hooks_ -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
