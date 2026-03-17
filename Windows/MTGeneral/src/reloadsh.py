@@ -51,11 +51,15 @@ def find_functions_in_file(filepath):
 # ----------------------------------------------------------------------
 # 第三方包扫描：分析项目内所有 .py 文件的 import 语句
 # ----------------------------------------------------------------------
-def get_third_party_packages(root_dir):
+def get_third_party_packages(root_dir, exclude_packages=None):
     """
     扫描 root_dir 下所有 .py 文件，收集第三方包名。
-    返回去重排序后的列表，已知模块名映射到实际安装包名（如 win32gui -> pywin32）。
+    exclude_packages: 列表，需要排除的包名（映射后的真实包名，如 'pywin32'）。
+    返回去重排序后的列表。
     """
+    if exclude_packages is None:
+        exclude_packages = []
+
     PACKAGE_ALIASES = {
         'win32gui': 'pywin32',
         'win32api': 'pywin32',
@@ -104,6 +108,9 @@ def get_third_party_packages(root_dir):
         mapped = PACKAGE_ALIASES.get(pkg, pkg)
         mapped_packages.add(mapped)
 
+    # 排除手动指定的包
+    mapped_packages = mapped_packages - set(exclude_packages)
+
     return sorted(mapped_packages)
 
 # ----------------------------------------------------------------------
@@ -150,16 +157,24 @@ def main():
     windows_dir = Path(args.windows_dir)
     json_file = Path(args.json_file)
 
-    # 读取旧函数数据（兼容新旧格式）
+    # 读取旧数据（函数名、排除列表等）
     old_function_names = []
+    old_data = {}                     # 保存完整的旧 JSON 数据
+    ignore_packages = []               # 排除包名列表，默认为空
     if json_file.exists():
         try:
             with open(json_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                old_data = data        # 保存完整数据
+                # 提取函数名（兼容新旧格式）
                 if "function" in data:
                     old_function_names = list(data["function"].keys())
                 elif "functionName" in data:
                     old_function_names = data["functionName"]
+                # 提取排除包名列表（键名为 pythoPackageIgnore）
+                ignore_packages = data.get("pythoPackageIgnore", [])
+                if not isinstance(ignore_packages, list):
+                    ignore_packages = []
         except Exception as e:
             print(f"⚠️  Warning: Could not read existing {json_file} (will be overwritten): {e}", file=sys.stderr)
 
@@ -186,19 +201,18 @@ def main():
     added = sorted(list(new_set - old_set))
     removed = sorted(list(old_set - new_set))
 
-    # 扫描第三方包
+    # 扫描第三方包，传入排除列表
     try:
-        third_party_packages = get_third_party_packages(windows_dir)
+        third_party_packages = get_third_party_packages(windows_dir, exclude_packages=ignore_packages)
     except Exception as e:
         print(f"Error scanning Python packages: {e}", file=sys.stderr)
         third_party_packages = []
 
-    # 构建新 JSON 数据
+    # 构建新 JSON 数据：基于旧数据，更新函数和包列表，保留其他字段（如 pythoPackageIgnore）
     function_dict = {info["name"]: {"description": info["description"]} for info in new_functions}
-    json_data = {
-        "function": function_dict,
-        "pythonPackage": third_party_packages
-    }
+    json_data = dict(old_data)          # 复制旧数据
+    json_data["function"] = function_dict
+    json_data["pythonPackage"] = third_party_packages
 
     # 写入 JSON 文件
     with open(json_file, 'w', encoding='utf-8') as f:

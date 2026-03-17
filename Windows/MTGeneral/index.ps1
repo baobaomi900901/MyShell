@@ -124,7 +124,7 @@ function setsh {
   code $shellPath
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
-S
+
 function type_ {
     # 用途: 查看方法是否存在, type_ {方法名}
     param(
