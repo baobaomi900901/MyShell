@@ -30,7 +30,7 @@ function Invoke-LicenseRpa {
         }
 
         $password = "kingswarekcaom"
-        Copy-LicenseRpaToClipboard -Text $password
+        Copy_LicenseRpaToClipboard -Text $password
         Write-Host "已打开 RPALicense，密码: $password" -ForegroundColor Green
     }
     catch {
@@ -39,7 +39,7 @@ function Invoke-LicenseRpa {
 }
 
 # 内部辅助函数：复制文本到剪贴板
-function Copy-LicenseRpaToClipboard {
+function Copy_LicenseRpaToClipboard {
     param([string]$Text)
     try {
         if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
