@@ -34,7 +34,7 @@
 
         ```shell
 
-# C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 
 $functionsDir = "$PSScriptRoot\MyShell\windows"
 if (Test-Path $functionsDir) {
