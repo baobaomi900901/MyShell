@@ -33,7 +33,7 @@ function reloadsh {
 
     # 构建参数路径
     $windowsDir = Join-Path $env:myshell "windows"
-    $jsonFile = Join-Path $env:myshell "windows\function_tracker.json"
+    $jsonFile = Join-Path $env:myshell "config\function_tracker.json"
 
     # 调用 Python 脚本，传递必需参数，同时保留用户可能传入的额外参数
     & python $pythonScript --windows-dir "$windowsDir" --json-file "$jsonFile" @args
@@ -61,7 +61,7 @@ function hsh {
         return
     }
 
-    $jsonPath = Join-Path $env:myshell "Windows\function_tracker.json"
+    $jsonPath = Join-Path $env:myshell "config\function_tracker.json"
     
     if (-not (Test-Path $jsonPath)) {
         Write-Error "找不到 function_tracker.json，预期路径：$jsonPath"
@@ -109,13 +109,15 @@ function hsh {
     # 计算最大函数名长度（用于对齐）
     $maxLen = ($functions | ForEach-Object { $_.Name.Length } | Measure-Object -Maximum).Maximum
 
-    Write-Host "内置方法:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "内置方法:"
 
     foreach ($f in $functions) {
         # 左对齐函数名，右侧填充空格至 maxLen+2，然后加上 "# " 和描述
         $line = "  " + $f.Name.PadRight($maxLen + 2) + "# " + $f.Description
         Write-Host $line -ForegroundColor Yellow
     }
+    Write-Host ""
 }
 
 function setsh {
@@ -295,6 +297,8 @@ function cd_ {
         return
     }
 
+    Write-Host ""
+
     # 调用 Python 脚本，将用户输入作为参数传递（不隐藏错误输出）
     $output = & python $scriptPath $action 2>&1
 
@@ -317,6 +321,7 @@ function cd_ {
         # 否则直接打印输出（帮助信息或错误信息）
         Write-Host $outputString
     }
+    Write-Host ""
 }
 
 # Tab 补全功能（保持不变）
