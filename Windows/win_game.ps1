@@ -43,7 +43,7 @@ function game_ {
         $config.PSObject.Properties | ForEach-Object {
             $key = $_.Name
             $item = $_.Value
-            if ($item.win -and $item.win -ne $null) {
+            if ($item.win -and $null -ne $item.win) {
                 Write-Host "  $key" -ForegroundColor Yellow -NoNewline
                 Write-Host " - $($item.description)"
             }
@@ -65,7 +65,7 @@ function game_ {
     $item = $config.$internalAction
     $sourcePath = $item.win
     
-    if (-not $sourcePath -or $sourcePath -eq $null) {
+    if (-not $sourcePath -or $null -eq $sourcePath) {
         Write-Host "Error: Game '$action' not configured for Windows" -ForegroundColor Red
         return
     }

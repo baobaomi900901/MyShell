@@ -17,7 +17,8 @@ function Invoke-CleanImage {
 
         # 定位 Node 脚本
         $scriptDir = $PSScriptRoot
-        $toolsPath = Join-Path $scriptDir "../../_tools"
+        # 假设 _tools 目录在上一级（根据原脚本逻辑）
+        $toolsPath = Join-Path $scriptDir "../../../_tools"
         $nodeScriptPath = Join-Path $toolsPath "cleanUnusedImages.js"
 
         if (-not (Test-Path $nodeScriptPath)) {
