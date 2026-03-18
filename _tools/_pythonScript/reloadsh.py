@@ -8,18 +8,13 @@ import re
 import argparse
 import ast
 import sys
+import questionary
 from pathlib import Path
 
 try:
     import keyboard
 except ImportError:
-    print("缺少 keyboard 模块，请执行 pip install keyboard / pip3 install keyboard")
-    sys.exit(10)
-
-try:
-    import questionary
-except ImportError:
-    print("缺少 questionary 模块，请执行 pip install questionary / pip3 install questionary")
+    print("缺少 keyboard 模块，请执行 pip install keyboard")
     sys.exit(10)
 
 # ----------------------------------------------------------------------
@@ -382,10 +377,22 @@ def main():
         sys.exit(1)
 
     elif system_type == 'mac':
-        # macOS：提示用户手动执行 source
+        # macOS：如果有删除的方法，且环境变量 RELOADSH_REMOVED_FILE 已设置，则写入临时文件
+        if removed and 'RELOADSH_REMOVED_FILE' in os.environ:
+            removed_file = os.environ['RELOADSH_REMOVED_FILE']
+            try:
+                with open(removed_file, 'w', encoding='utf-8') as f:
+                    for func in removed:
+                        f.write(func + '\n')
+                # 返回特殊退出码 42 通知上层执行 unfunction 和 source
+                sys.exit(42)
+            except Exception as e:
+                print(f"{RED}❌ 写入删除函数列表到文件失败: {e}{RESET}", file=sys.stderr)
+                sys.exit(1)
+        # 没有删除函数或环境变量未设置，正常退出
         print(f"\n{GREEN}✅ 配置已更新。请执行以下命令以应用更改：{RESET}")
         print(f"{CYAN}   source ~/.zshrc{RESET}")
-        sys.exit(0)  # 正常退出
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

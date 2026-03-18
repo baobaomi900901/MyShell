@@ -1,77 +1,98 @@
-# cd_ 命令的补全函数
-_cd_() {
-  local -a candidates
-  local config_file
+# 快速目录跳转函数（调用 cd.py）
+cd_() {
+    local action="$1"
 
-  # 检查环境变量 MYSHELL
-  if [[ -z "$MYSHELL" ]]; then
-    _message "错误: 环境变量 MYSHELL 未设置"
-    return 1
-  fi
+    if [[ -z "$MYSHELL" ]]; then
+        echo -e "\033[91m❌ 环境变量 MYSHELL 未设置，无法定位 Python 脚本\033[0m" >&2
+        return 1
+    fi
 
-  config_file="$MYSHELL/config/path.json"
-  if [[ ! -f "$config_file" ]]; then
-    _message "错误: 配置文件不存在: $config_file"
-    return 1
-  fi
+    local script_path="$MYSHELL/_tools/_pythonScript/cd.py"
 
-  # 调用 Python 提取可用的目录名（仅限当前平台）
-  # 使用 python3 快速解析 JSON 并输出一行一个候选词
-  candidates=($(python3 -c "
-import sys, json, platform
-try:
-    with open('$config_file', encoding='utf-8-sig') as f:
-        data = json.load(f)
-except Exception:
-    sys.exit(1)
+    if [[ ! -f "$script_path" ]]; then
+        echo -e "\033[91m❌ 找不到 Python 脚本: $script_path\033[0m" >&2
+        return 1
+    fi
 
-system = platform.system()
-# 在 macOS 上只取包含 'mac' 字段的键
-for key, val in data.items():
-    if system == 'Darwin' and val.get('mac') is None:
-        continue
-    # 将下划线替换为短横线作为显示名
-    print(key.replace('_', '-'))
-" 2>/dev/null))
+    echo ""
 
-  # 如果没有候选词，显示提示并返回
-  if [[ ${#candidates} -eq 0 ]]; then
-    _message "没有可用的目录"
-    return 1
-  fi
+    local output
+    output=$(python3 "$script_path" "$action" 2>&1)   # 确保使用 python3
 
-  # 使用 compadd 将候选词提供给补全系统
-  compadd -a candidates
+    if [[ -z "$output" ]]; then
+        return
+    fi
+
+    if [[ "$output" == cd\ * ]]; then
+        eval "$output"
+    else
+        echo "$output"
+    fi
+
+    echo ""
 }
 
-# 将补全函数绑定到 cd_ 命令
-compdef _cd_ cd_
+_cd_completion() {
+    local config_file="$HOME/MyShell/config/path.json"
+    
+    if [[ ! -f "$config_file" ]]; then
+        return 1
+    fi
+    
+    # 检查是否安装了 jq
+    if ! command -v jq &> /dev/null; then
+        return 1
+    fi
+    
+    local -a options=()
+    
+    # 使用 jq 获取所有 macOS 可用的路径
+    local keys=($(jq -r 'to_entries[] | select(.value.mac != null) | .key' "$config_file" 2>/dev/null))
+    
+    for key in "${keys[@]}"; do
+        local desc=$(jq -r ".[\"$key\"].description" "$config_file")
+        # 将内部的下划线键名转换回用户友好的连字符格式
+        local display_name="${key//_/-}"
+        # 只使用显示名称，不要包含描述（避免重复显示）
+        options+=("$display_name")
+    done
+    
+    _describe 'cd_ options' options
+}
+
+# 将补全函数关联到 cd_ 命令
+compdef _cd_completion cd_
 
 
 
 
 reloadsh() {
-    # 固定参数值
+    if [[ -z "$MYSHELL" ]]; then
+        echo "错误: 环境变量 MYSHELL 未设置" >&2
+        return 1
+    fi
+
     local system_type="mac"
     local system_dir="${MYSHELL}/MacOS"
     local public_script_dir="${MYSHELL}/_tools"
     local json_file="${MYSHELL}/config/function_tracker.json"
-    # 假设 reloadsh.py 位于 _tools 目录下（可根据实际情况调整）
     local script_path="${MYSHELL}/_tools/_pythonScript/reloadsh.py"
 
-    # 检查 Python 环境
     if ! command -v python3 >/dev/null 2>&1; then
         echo "错误: 未找到 python3，请安装 Python 或将其加入 PATH" >&2
         return 1
     fi
 
-    # 检查脚本文件是否存在
     if [[ ! -f "$script_path" ]]; then
         echo "错误: 未找到 reloadsh.py，预期路径: $script_path" >&2
         return 1
     fi
 
-    # 执行 Python 脚本
+    # 创建临时文件用于接收删除的函数列表
+    local tmp_removed=$(mktemp)
+    # 设置环境变量传递给 Python 脚本
+    export RELOADSH_REMOVED_FILE="$tmp_removed"
+
     python3 "$script_path" \
         --system-type "$system_type" \
         --system-dir "$system_dir" \
@@ -79,8 +100,31 @@ reloadsh() {
         --json-file "$json_file"
 
     local exit_code=$?
-    if [[ $exit_code -ne 0 ]]; then
+    unset RELOADSH_REMOVED_FILE
+
+    if [[ $exit_code -eq 42 ]]; then
+        echo "检测到有删除的函数，正在清理内存中的函数定义..."
+        if [[ -s "$tmp_removed" ]]; then
+            # 读取临时文件中的函数名，每行一个，并执行 unfunction
+            while IFS= read -r func; do
+                if [[ -n "$func" ]]; then
+                    echo "移除函数: $func"
+                    # 使用 unfunction 移除（zsh 内建），忽略可能不存在的错误
+                    unfunction "$func" 2>/dev/null || echo "警告: 函数 $func 不存在或无法移除" >&2
+                fi
+            done < "$tmp_removed"
+        else
+            echo "警告: 临时文件为空，但退出码为 42" >&2
+        fi
+        echo "重新加载 ~/.zshrc ..."
+        source ~/.zshrc
+        echo "重新加载完成。"
+    elif [[ $exit_code -ne 0 ]]; then
         echo "reloadsh 执行失败，退出码: $exit_code" >&2
+        rm -f "$tmp_removed"
+        return $exit_code
     fi
-    return $exit_code
+
+    # 清理临时文件
+    rm -f "$tmp_removed"
 }
