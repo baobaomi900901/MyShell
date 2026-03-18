@@ -20,7 +20,7 @@ except ImportError:
 def find_functions_in_file(filepath):
     """
     扫描 PowerShell 脚本文件，返回函数信息列表。
-    每个元素为字典：{"name": 函数名, "description": 描述}
+    每个元素为字典：{"name": 函数名, "description": 描述, "file": 文件路径}
     描述提取自函数定义后第一个以 "# 用途:" 开头的行（最多向后查找5行）。
     """
     functions = []
@@ -28,8 +28,8 @@ def find_functions_in_file(filepath):
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
 
-        # 匹配 function 定义行（支持简单格式）
-        pattern = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*'
+        # 匹配 function 定义行，支持包含连字符的函数名（如 Invoke-CleanImage）
+        pattern = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*'
         for i, line in enumerate(lines):
             match = re.search(pattern, line)
             if match:
@@ -43,7 +43,11 @@ def find_functions_in_file(filepath):
                     if stripped.startswith("# 用途:"):
                         desc = stripped[len("# 用途:"):].strip()
                         break
-                functions.append({"name": func_name, "description": desc})
+                functions.append({
+                    "name": func_name,
+                    "description": desc,
+                    "file": str(filepath)   # 添加文件路径
+                })
     except Exception as e:
         print(f"Error reading {filepath}: {e}", file=sys.stderr)
     return functions
@@ -184,16 +188,19 @@ def main():
     for ps_file in ps_files:
         new_function_infos.extend(find_functions_in_file(ps_file))
 
-    # 去重（同名函数保留首次扫描到的描述）
+    # 去重（同名函数保留首次扫描到的描述和文件）
     unique_functions = {}
     for info in new_function_infos:
         name = info["name"]
         if name not in unique_functions:
-            unique_functions[name] = info["description"]
+            unique_functions[name] = {
+                "description": info["description"],
+                "file": info["file"]
+            }
 
     # 构建新函数列表（按名称排序）
     new_function_names = sorted(unique_functions.keys())
-    new_functions = [{"name": name, "description": unique_functions[name]} for name in new_function_names]
+    new_functions = [{"name": name, "description": unique_functions[name]["description"]} for name in new_function_names]
 
     # 计算添加/删除（仅基于函数名）
     old_set = set(old_function_names)
@@ -233,7 +240,8 @@ def main():
     if added:
         print(f"{GREEN}🆕 新增方法 ({len(added)}):{RESET}")
         for func in added:
-            print(f"{GREEN}   ✅ {func}{RESET}")
+            file_path = unique_functions[func]["file"]
+            print(f"{GREEN}   ✅ {func} ({file_path}){RESET}")
     else:
         print(f"{GREEN}✅ 没有新增方法{RESET}")
 
