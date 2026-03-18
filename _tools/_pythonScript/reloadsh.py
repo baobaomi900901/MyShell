@@ -8,13 +8,18 @@ import re
 import argparse
 import ast
 import sys
-import questionary
 from pathlib import Path
 
 try:
     import keyboard
 except ImportError:
-    print("缺少 keyboard 模块，请执行 pip install keyboard")
+    print("缺少 keyboard 模块，请执行 pip install keyboard / pip3 install keyboard")
+    sys.exit(10)
+
+try:
+    import questionary
+except ImportError:
+    print("缺少 questionary 模块，请执行 pip install questionary / pip3 install questionary")
     sys.exit(10)
 
 # ----------------------------------------------------------------------
