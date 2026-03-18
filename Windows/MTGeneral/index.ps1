@@ -13,13 +13,7 @@ function reloadsh {
     .SYNOPSIS
         调用 reloadsh.py 并根据其退出码决定是否关闭当前 PowerShell 窗口。
     #>
-    $scriptDir = $PSScriptRoot
-    if (-not $scriptDir) {
-        Write-Error "无法获取脚本所在目录。请确保函数定义在 .ps1 文件中并通过点 source 方式加载。"
-        return
-    }
-
-    $pythonScript = Join-Path $scriptDir "src\reloadsh.py"
+    $pythonScript = Join-Path $env:myshell "_tools\_pythonScript\reloadsh.py"
     if (-not (Test-Path $pythonScript)) {
         Write-Error "找不到 reloadsh.py，预期路径：$pythonScript"
         return
@@ -33,10 +27,12 @@ function reloadsh {
 
     # 构建参数路径
     $windowsDir = Join-Path $env:myshell "windows"
+    $public_script_dir = Join-Path $env:myshell "_tools"
+    $system_type = "windows"
     $jsonFile = Join-Path $env:myshell "config\function_tracker.json"
 
     # 调用 Python 脚本，传递必需参数，同时保留用户可能传入的额外参数
-    & python $pythonScript --windows-dir "$windowsDir" --json-file "$jsonFile" @args
+    & python $pythonScript --system-dir "$windowsDir" --public-script-dir "$public_script_dir" --system-type "$system_type" --json-file "$jsonFile" @args
     $exitCode = $LASTEXITCODE
 
     # 如果退出码为 1，表示用户选择了 Yes 并希望关闭当前窗口

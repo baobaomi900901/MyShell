@@ -1,4 +1,7 @@
-﻿import os
+﻿#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import os
 import time
 import json
 import re
@@ -15,14 +18,24 @@ except ImportError:
     sys.exit(10)
 
 # ----------------------------------------------------------------------
-# 函数扫描：从 PowerShell 脚本中提取函数名和描述
+# 函数扫描：根据文件类型提取函数名和描述
 # ----------------------------------------------------------------------
 def find_functions_in_file(filepath):
     """
-    扫描 PowerShell 脚本文件，返回函数信息列表。
-    每个元素为字典：{"name": 函数名, "description": 描述, "file": 文件路径}
-    描述提取自函数定义后第一个以 "# 用途:" 开头的行（最多向后查找5行）。
+    根据文件扩展名选择合适的函数提取方式。
+    返回函数信息列表，每个元素为 {"name": 函数名, "description": 描述, "file": 文件路径}
     """
+    ext = filepath.suffix.lower()
+    if ext == '.ps1':
+        return find_functions_in_ps1(filepath)
+    elif ext == '.zsh':
+        return find_functions_in_zsh(filepath)
+    else:
+        # 不支持的文件类型，返回空列表
+        return []
+
+def find_functions_in_ps1(filepath):
+    """从 PowerShell 脚本中提取函数"""
     functions = []
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -46,7 +59,47 @@ def find_functions_in_file(filepath):
                 functions.append({
                     "name": func_name,
                     "description": desc,
-                    "file": str(filepath)   # 添加文件路径
+                    "file": str(filepath)
+                })
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}", file=sys.stderr)
+    return functions
+
+def find_functions_in_zsh(filepath):
+    """从 zsh 脚本中提取函数"""
+    functions = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        # 匹配两种常见函数定义格式：
+        # 1. function name { ... }
+        # 2. name() { ... }
+        # 注意：函数名允许包含字母、数字、下划线、连字符，但不能以数字开头
+        pattern_func_keyword = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*'
+        pattern_parentheses = r'^\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*\(\s*\)\s*'
+
+        for i, line in enumerate(lines):
+            # 尝试匹配 function 关键字形式
+            match = re.search(pattern_func_keyword, line)
+            if not match:
+                # 尝试匹配 name() 形式
+                match = re.search(pattern_parentheses, line)
+            if match:
+                func_name = match.group(1)
+                if func_name.startswith('_'):
+                    continue
+                # 在函数定义后最多5行内查找 "# 用途:"
+                desc = ""
+                for j in range(i+1, min(i+5, len(lines))):
+                    stripped = lines[j].lstrip()
+                    if stripped.startswith("# 用途:"):
+                        desc = stripped[len("# 用途:"):].strip()
+                        break
+                functions.append({
+                    "name": func_name,
+                    "description": desc,
+                    "file": str(filepath)
                 })
     except Exception as e:
         print(f"Error reading {filepath}: {e}", file=sys.stderr)
@@ -154,12 +207,35 @@ def countdown(seconds):
 # ----------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description='Reloadsh helper')
-    parser.add_argument('--windows-dir', required=True, help='Path to Windows directory containing *.ps1 files')
+    parser.add_argument('--system-dir', required=True, help='Path to system directory containing script files')
     parser.add_argument('--json-file', required=True, help='Path to function_tracker.json')
+    parser.add_argument('--system-type', required=True, choices=['windows', 'mac'], help='Type of system: windows or mac')
+    parser.add_argument('--public-script-dir', required=False, help='Path to public script directory')
     args = parser.parse_args()
 
-    windows_dir = Path(args.windows_dir)
+    system_dir = Path(args.system_dir)
     json_file = Path(args.json_file)
+    system_type = args.system_type
+    public_script_dir = args.public_script_dir
+
+    # 根据系统类型确定要扫描的脚本文件扩展名
+    if system_type == 'windows':
+        script_extensions = ['.ps1']
+    elif system_type == 'mac':
+        script_extensions = ['.zsh']
+    else:
+        # 理论上不会执行到这里，因为 argparse 限制了 choices
+        print(f"错误: 不支持的 system_type: {system_type}", file=sys.stderr)
+        sys.exit(1)
+
+    # 构建要扫描的目录列表
+    scan_dirs = [system_dir]
+    if public_script_dir:
+        public_dir_path = Path(public_script_dir)
+        if public_dir_path.exists() and public_dir_path.is_dir():
+            scan_dirs.append(public_dir_path)
+        else:
+            print(f"警告: 提供的公共脚本目录不存在或不是目录: {public_script_dir}", file=sys.stderr)
 
     # 读取旧数据（函数名、排除列表等）
     old_function_names = []
@@ -182,11 +258,15 @@ def main():
         except Exception as e:
             print(f"⚠️  Warning: Could not read existing {json_file} (will be overwritten): {e}", file=sys.stderr)
 
-    # 递归扫描所有 *.ps1 文件，获取新函数信息
-    ps_files = sorted(windows_dir.rglob('*.ps1'))
+    # ------------------------------------------------------------------
+    # 扫描所有指定目录下的脚本文件，获取新函数信息
+    # ------------------------------------------------------------------
     new_function_infos = []
-    for ps_file in ps_files:
-        new_function_infos.extend(find_functions_in_file(ps_file))
+    for scan_dir in scan_dirs:
+        for ext in script_extensions:
+            script_files = sorted(scan_dir.rglob(f'*{ext}'))
+            for script_file in script_files:
+                new_function_infos.extend(find_functions_in_file(script_file))
 
     # 去重（同名函数保留首次扫描到的描述和文件）
     unique_functions = {}
@@ -208,12 +288,17 @@ def main():
     added = sorted(list(new_set - old_set))
     removed = sorted(list(old_set - new_set))
 
-    # 扫描第三方包，传入排除列表
-    try:
-        third_party_packages = get_third_party_packages(windows_dir, exclude_packages=ignore_packages)
-    except Exception as e:
-        print(f"Error scanning Python packages: {e}", file=sys.stderr)
-        third_party_packages = []
+    # ------------------------------------------------------------------
+    # 扫描第三方包：合并所有扫描目录下的 Python 包（无论系统类型，都扫描 .py 文件）
+    # ------------------------------------------------------------------
+    all_packages = set()
+    for scan_dir in scan_dirs:
+        try:
+            dir_packages = get_third_party_packages(scan_dir, exclude_packages=ignore_packages)
+            all_packages.update(dir_packages)
+        except Exception as e:
+            print(f"Error scanning Python packages in {scan_dir}: {e}", file=sys.stderr)
+    third_party_packages = sorted(all_packages)
 
     # 构建新 JSON 数据：基于旧数据，更新函数和包列表，保留其他字段（如 pythoPackageIgnore）
     function_dict = {info["name"]: {"description": info["description"]} for info in new_functions}
@@ -256,38 +341,46 @@ def main():
     print(f"{GREEN}✅ reload完成！{RESET}")
 
     # ------------------------------------------------------------------
-    # 询问是否重启终端
+    # 根据系统类型执行不同的后续操作
     # ------------------------------------------------------------------
-    answer = questionary.select(
-        "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
-        choices=["Yes", "No"]
-    ).ask()
+    if system_type == 'windows':
+        # Windows：询问是否重启终端
+        answer = questionary.select(
+            "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
+            choices=["Yes", "No"]
+        ).ask()
 
-    if answer == "No":
-        print("已取消。")
-        sys.exit(0)  # 退出码 0：不关闭窗口
+        if answer == "No":
+            print("已取消。")
+            sys.exit(0)  # 退出码 0：不关闭窗口
 
-    # 用户选择 Yes
-    print("\n准备关闭当前窗口...")
-    countdown(3)  # 倒计时3秒
+        # 用户选择 Yes
+        print("\n准备关闭当前窗口...")
+        countdown(3)  # 倒计时3秒
 
-    # 检测终端类型并发送组合键
-    terminal_type = detect_terminal()
-    print(f"检测到当前终端窗口类型：{terminal_type}")
+        # 检测终端类型并发送组合键
+        terminal_type = detect_terminal()
+        print(f"检测到当前终端窗口类型：{terminal_type}")
 
-    if terminal_type == "vscode":
-        print("即将发送 Ctrl+Shift+` 到 VS Code，请确保焦点在 VS Code 窗口...")
-        time.sleep(2)
-        send_vscode_combo()
-        print("组合键已发送。")
-    else:  # windows
-        print("即将发送 Ctrl+Shift+t 到 Windows（恢复已关闭标签页），请确保焦点在浏览器或资源管理器...")
-        time.sleep(2)
-        send_windows_combo()
-        print("组合键已发送。")
+        if terminal_type == "vscode":
+            print("即将发送 Ctrl+Shift+` 到 VS Code，请确保焦点在 VS Code 窗口...")
+            time.sleep(2)
+            send_vscode_combo()
+            print("组合键已发送。")
+        else:  # windows
+            print("即将发送 Ctrl+Shift+t 到 Windows（恢复已关闭标签页），请确保焦点在浏览器或资源管理器...")
+            time.sleep(2)
+            send_windows_combo()
+            print("组合键已发送。")
 
-    # 退出码 1：通知 PowerShell 关闭窗口
-    sys.exit(1)
+        # 退出码 1：通知 PowerShell 关闭窗口
+        sys.exit(1)
+
+    elif system_type == 'mac':
+        # macOS：提示用户手动执行 source
+        print(f"\n{GREEN}✅ 配置已更新。请执行以下命令以应用更改：{RESET}")
+        print(f"{CYAN}   source ~/.zshrc{RESET}")
+        sys.exit(0)  # 正常退出
 
 if __name__ == "__main__":
     main()
