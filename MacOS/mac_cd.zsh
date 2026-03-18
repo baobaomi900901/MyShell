@@ -94,72 +94,72 @@ _cd_completion() {
 # 将补全函数关联到 cd_ 命令
 compdef _cd_completion cd_
 
-# 辅助函数：编辑 cd_ 配置文件
-function edit-cd-config() {
-    local config_file="$HOME/MyShell/config/path.json"
-    if command -v code &> /dev/null; then
-        code "$config_file"
-    else
-        vim "$config_file"
-    fi
-    echo -e "${c_g}已打开 cd_ 配置文件${c_x}"
-}
+# # 辅助函数：编辑 cd_ 配置文件
+# function edit-cd-config() {
+#     local config_file="$HOME/MyShell/config/path.json"
+#     if command -v code &> /dev/null; then
+#         code "$config_file"
+#     else
+#         vim "$config_file"
+#     fi
+#     echo -e "${c_g}已打开 cd_ 配置文件${c_x}"
+# }
 
-# 辅助函数：显示所有配置路径
-function show-cd-paths() {
-    local config_file="$HOME/MyShell/config/path.json"
+# # 辅助函数：显示所有配置路径
+# function show-cd-paths() {
+#     local config_file="$HOME/MyShell/config/path.json"
     
-    if [[ ! -f "$config_file" ]]; then
-        echo -e "${c_r}配置文件不存在${c_x}"
-        return 1
-    fi
+#     if [[ ! -f "$config_file" ]]; then
+#         echo -e "${c_r}配置文件不存在${c_x}"
+#         return 1
+#     fi
     
-    if ! command -v jq &> /dev/null; then
-        echo -e "${c_r}需要安装 jq 命令: brew install jq${c_x}"
-        return 1
-    fi
+#     if ! command -v jq &> /dev/null; then
+#         echo -e "${c_r}需要安装 jq 命令: brew install jq${c_x}"
+#         return 1
+#     fi
     
-    echo -e "${c_b}所有配置路径:${c_x}"
+#     echo -e "${c_b}所有配置路径:${c_x}"
     
-    # 使用 jq 漂亮地显示所有配置
-    jq -r 'to_entries[] | "\(.key):\n  描述: \(.value.description)\n  Windows: \(.value.win // "未配置")\n  macOS: \(.value.mac // "未配置")\n"' "$config_file" | while IFS= read -r line; do
-        if [[ "$line" == *:* && ! "$line" == *描述:* && ! "$line" == *Windows:* && ! "$line" == *macOS:* ]]; then
-            # 键名行
-            local key="${line%:}"
-            local display_name="${key//_/-}"
-            echo -e "${c_y}$display_name${c_x}"
-        else
-            echo "  $line"
-        fi
-    done
-}
+#     # 使用 jq 漂亮地显示所有配置
+#     jq -r 'to_entries[] | "\(.key):\n  描述: \(.value.description)\n  Windows: \(.value.win // "未配置")\n  macOS: \(.value.mac // "未配置")\n"' "$config_file" | while IFS= read -r line; do
+#         if [[ "$line" == *:* && ! "$line" == *描述:* && ! "$line" == *Windows:* && ! "$line" == *macOS:* ]]; then
+#             # 键名行
+#             local key="${line%:}"
+#             local display_name="${key//_/-}"
+#             echo -e "${c_y}$display_name${c_x}"
+#         else
+#             echo "  $line"
+#         fi
+#     done
+# }
 
-# 检查依赖函数
-function check-cd-deps() {
-    if ! command -v jq &> /dev/null; then
-        echo -e "${c_r}缺少依赖: jq${c_x}"
-        echo -e "${c_y}请安装: brew install jq${c_x}"
-        return 1
-    fi
+# # 检查依赖函数
+# function check-cd-deps() {
+#     if ! command -v jq &> /dev/null; then
+#         echo -e "${c_r}缺少依赖: jq${c_x}"
+#         echo -e "${c_y}请安装: brew install jq${c_x}"
+#         return 1
+#     fi
     
-    local config_file="$HOME/MyShell/config/path.json"
-    if [[ ! -f "$config_file" ]]; then
-        echo -e "${c_r}配置文件不存在: $config_file${c_x}"
-        echo -e "${c_y}请从 Windows 同步或手动创建${c_x}"
-        return 1
-    fi
+#     local config_file="$HOME/MyShell/config/path.json"
+#     if [[ ! -f "$config_file" ]]; then
+#         echo -e "${c_r}配置文件不存在: $config_file${c_x}"
+#         echo -e "${c_y}请从 Windows 同步或手动创建${c_x}"
+#         return 1
+#     fi
     
-    echo -e "${c_g}所有依赖检查通过!${c_x}"
+#     echo -e "${c_g}所有依赖检查通过!${c_x}"
     
-    # 测试 JSON 解析
-    if jq . "$config_file" &> /dev/null; then
-        echo -e "${c_g}JSON 配置文件解析正常${c_x}"
+#     # 测试 JSON 解析
+#     if jq . "$config_file" &> /dev/null; then
+#         echo -e "${c_g}JSON 配置文件解析正常${c_x}"
         
-        # 显示可用的 macOS 路径数量
-        local mac_count=$(jq -r 'to_entries[] | select(.value.mac != null) | .key' "$config_file" | wc -l | tr -d ' ')
-        echo -e "${c_b}找到 $mac_count 个 macOS 可用路径${c_x}"
-    else
-        echo -e "${c_r}JSON 配置文件格式错误${c_x}"
-        return 1
-    fi
-}
+#         # 显示可用的 macOS 路径数量
+#         local mac_count=$(jq -r 'to_entries[] | select(.value.mac != null) | .key' "$config_file" | wc -l | tr -d ' ')
+#         echo -e "${c_b}找到 $mac_count 个 macOS 可用路径${c_x}"
+#     else
+#         echo -e "${c_r}JSON 配置文件格式错误${c_x}"
+#         return 1
+#     fi
+# }
