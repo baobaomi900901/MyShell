@@ -378,7 +378,7 @@ def main():
 
     elif system_type == 'mac':
         # macOS：如果有删除的方法，且环境变量 RELOADSH_REMOVED_FILE 已设置，则写入临时文件
-        if removed and 'RELOADSH_REMOVED_FILE' in os.environ:
+        if (added or removed) and 'RELOADSH_REMOVED_FILE' in os.environ:
             removed_file = os.environ['RELOADSH_REMOVED_FILE']
             try:
                 with open(removed_file, 'w', encoding='utf-8') as f:
@@ -390,8 +390,7 @@ def main():
                 print(f"{RED}❌ 写入删除函数列表到文件失败: {e}{RESET}", file=sys.stderr)
                 sys.exit(1)
         # 没有删除函数或环境变量未设置，正常退出
-        print(f"\n{GREEN}✅ 配置已更新。请执行以下命令以应用更改：{RESET}")
-        print(f"{CYAN}   source ~/.zshrc{RESET}")
+        print(f"\n{GREEN}✅ 如未更新请执行：source ~/.zshrc{RESET}")
         sys.exit(0)
 
 if __name__ == "__main__":

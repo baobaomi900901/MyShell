@@ -1,24 +1,24 @@
 # ~/Users/mobytang/MyShell/MacOS/mac_general.zsh
-hsh() {
-    echo -e "${c_b}内置地方法:${c_x}"
-    echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
-    echo -e "${c_y}  reloadsh      # 重载自定义shell配置文件${c_x}"
-    echo -e "${c_grey}  remove_sh     # 🚫 [已弃用] 删除别名或函数, 请使用 reloadsh${c_x}"
-    echo -e "${c_y}  type_         # 查看 cd_ 方法是否存在${c_x}"
-    echo -e "${c_b}  master_         # 允许允许运行任何来源的应用${c_x}"
-    echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
-    echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
-    echo -e "${c_y}  myip_         # 获取本机IP地址${c_x}"
-    echo -e "${c_y}  new_          # 创建文件夹或文件 "
-    echo -e "${c_b}git相关操作:${c_x}"
-    echo -e "${c_y}  gs            # git status${c_x}"
-    echo -e "${c_y}  gcmt          # git commit -m${c_x}"
-    echo -e "${c_y}  ga            # git add${c_x}"
-    echo -e "${c_y}  gpr           # git pull${c_x}"
-    echo -e "${c_y}  gpo           # git push${c_x}"
-    echo -e "${c_y}  greset        # git reset --hard${c_x}"
-    echo -e "${c_y}  gloacl        # git log origin/develop..HEAD ${c_x}"
-}
+# hsh() {
+#     echo -e "${c_b}内置地方法:${c_x}"
+#     echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
+#     echo -e "${c_y}  reloadsh      # 重载自定义shell配置文件${c_x}"
+#     echo -e "${c_grey}  remove_sh     # 🚫 [已弃用] 删除别名或函数, 请使用 reloadsh${c_x}"
+#     echo -e "${c_y}  type_         # 查看 cd_ 方法是否存在${c_x}"
+#     echo -e "${c_b}  master_         # 允许允许运行任何来源的应用${c_x}"
+#     echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
+#     echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
+#     echo -e "${c_y}  myip_         # 获取本机IP地址${c_x}"
+#     echo -e "${c_y}  new_          # 创建文件夹或文件 "
+#     echo -e "${c_b}git相关操作:${c_x}"
+#     echo -e "${c_y}  gs            # git status${c_x}"
+#     echo -e "${c_y}  gcmt          # git commit -m${c_x}"
+#     echo -e "${c_y}  ga            # git add${c_x}"
+#     echo -e "${c_y}  gpr           # git pull${c_x}"
+#     echo -e "${c_y}  gpo           # git push${c_x}"
+#     echo -e "${c_y}  greset        # git reset --hard${c_x}"
+#     echo -e "${c_y}  gloacl        # git log origin/develop..HEAD ${c_x}"
+# }
 
 
 # 打开 vscode 并切换到指定目录
