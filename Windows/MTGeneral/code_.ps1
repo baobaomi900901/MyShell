@@ -2,6 +2,7 @@
 
 # code_ 函数：在 VS Code 中打开配置的路径
 function code_ {
+    # 用途: 在 VS Code 中打开配置的路径
     param([string]$name)
 
     # 构造 Python 脚本的完整路径（基于环境变量 $env:MYSHELL）

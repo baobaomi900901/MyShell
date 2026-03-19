@@ -2,6 +2,7 @@
 # 查询 密码 到剪切板
 
 function pw_ {
+    # 用途: 快速查找密码
     param (
         [Parameter(Position = 0)]
         [string]$action

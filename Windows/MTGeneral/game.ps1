@@ -2,6 +2,7 @@
 # 游戏存档备份管理函数
 
 function game_ {
+    # 用途: 游戏存档备份管理工具
     param (
         [Parameter(Position = 0)]
         [string]$action
