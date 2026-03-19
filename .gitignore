@@ -6,6 +6,6 @@ config/path.json
 config/path_code.json
 temp/*
 test/*
-_tools/lite_setup/assets/*
-_tools/lite_setup/plugin/*
+public/lite_setup/assets/*
+public/lite_setup/plugin/*
 *.pyc

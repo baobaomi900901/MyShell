@@ -16,7 +16,7 @@ tool_() {
         # echo -e "脚本所在路径: ${c_g}$script_path${c_x}"
 
         # 定位清理脚本
-        local tools_js_path="$script_path/../_tools/cleanUnusedImages.js"
+        local tools_js_path="$script_path/../public/cleanUnusedImages.js"
         tools_js_path="$(cd "${tools_js_path%/*}" && pwd)/${tools_js_path##*/}"
         if [[ ! -f "$tools_js_path" ]]; then
             echo -e "${c_r}错误: 清理脚本不存在于 $tools_js_path${c_x}"
@@ -66,7 +66,7 @@ tool_() {
                 echo -e "${c_r}错误: 清理脚本执行失败${c_x}"
                 echo -e "${c_y}解决方案:"
                 echo -e "1. 将脚本重命名为 cleanUnusedImages.mjs"
-                echo -e "2. 或在 _tools 目录添加 package.json 包含: {\"type\": \"module\"}${c_x}"
+                echo -e "2. 或在 public 目录添加 package.json 包含: {\"type\": \"module\"}${c_x}"
                 return 1
             fi
         else

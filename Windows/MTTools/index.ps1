@@ -1,4 +1,4 @@
-﻿# .\Windows\Win_tools\win_tools.ps1
+﻿# .\Windows\Winpublic\win_tools.ps1
 # 工具方法集:
 #   1. build-lite: 打包 KRPA Lite
 #   2. clean-image: 清理 Markdown 文档中未引用的图片

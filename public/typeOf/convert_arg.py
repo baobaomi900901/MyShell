@@ -1,4 +1,4 @@
-# .\_tools\typeOf\convert_arg.py
+# .\public\typeOf\convert_arg.py
 import ast
 
 def convert_arg(value):

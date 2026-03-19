@@ -8,7 +8,7 @@
     "description": "直接运行 build_lite_setup.py，无参数时默认传入 'K-RPA Lite'"
   },
   "clean-image": {
-    "script_path": "..\\..\\_tools\\cleanUnusedImages.js",
+    "script_path": "..\\..\\public\\cleanUnusedImages.js",
     "description": "清理指定路径下md文档中没有被引用的图片资源; \r\n 默认路径为当前目录"
   },
   "license-lite": {

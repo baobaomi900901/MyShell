@@ -5,7 +5,7 @@ function code_ {
     param([string]$name)
 
     # 构造 Python 脚本的完整路径（基于环境变量 $env:MYSHELL）
-    $script = Join-Path $env:MYSHELL "_tools\_pythonScript\vscode_open.py"
+    $script = Join-Path $env:MYSHELL "public\_script\vscode_open.py"
 
     if (-not (Test-Path $script)) {
         Write-Host "❌ Python 脚本不存在: $script" -ForegroundColor Red

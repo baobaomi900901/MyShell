@@ -73,7 +73,7 @@ def main():
         sys.exit(1)
 
     # 构造目标文件路径
-    target_exe = os.path.join(env_path, '_tools', 'lite_setup', 'k-setup.exe')
+    target_exe = os.path.join(env_path, 'public', 'lite_setup', 'k-setup.exe')
     print(f"查找路径: {target_exe}")
 
     # 检查文件是否存在

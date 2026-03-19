@@ -13,7 +13,7 @@ function reloadsh {
     .SYNOPSIS
         调用 reloadsh.py 并根据其退出码决定是否关闭当前 PowerShell 窗口。
     #>
-    $pythonScript = Join-Path $env:myshell "_tools\_pythonScript\reloadsh.py"
+    $pythonScript = Join-Path $env:myshell "public\_script\reloadsh.py"
     if (-not (Test-Path $pythonScript)) {
         Write-Error "找不到 reloadsh.py，预期路径：$pythonScript"
         return
@@ -27,7 +27,7 @@ function reloadsh {
 
     # 构建参数路径
     $windowsDir = Join-Path $env:myshell "windows"
-    $public_script_dir = Join-Path $env:myshell "_tools"
+    $public_script_dir = Join-Path $env:myshell "public"
     $system_type = "windows"
     $jsonFile = Join-Path $env:myshell "config\function_tracker.json"
 
@@ -283,9 +283,9 @@ function cd_ {
         return
     }
 
-    # 构建脚本路径：$myshell\_tools\_pythonScript\cd.py
-    $scriptPath = Join-Path $myshell "_tools"
-    $scriptPath = Join-Path $scriptPath "_pythonScript"
+    # 构建脚本路径：$myshell\public\_script\cd.py
+    $scriptPath = Join-Path $myshell "public"
+    $scriptPath = Join-Path $scriptPath "_script"
     $scriptPath = Join-Path $scriptPath "cd.py"
 
     if (-not (Test-Path $scriptPath)) {

@@ -4,17 +4,17 @@ from pathlib import Path
 
 current_file = Path(__file__).resolve()
 
-# 自动向上找到包含 _tools 的根目录
+# 自动向上找到包含 public 的根目录
 project_root = current_file
 while project_root != project_root.parent:
-    if (project_root / "_tools").exists():
+    if (project_root / "public").exists():
         break
     project_root = project_root.parent
 else:
-    print("❌ 未找到 _tools 目录")
+    print("❌ 未找到 public 目录")
     sys.exit(1)
 
-tools_dir = project_root / "_tools"
+tools_dir = project_root / "public"
 typeOf_dir = tools_dir / "typeOf"
 
 # 将 typeOf 目录加入 sys.path
