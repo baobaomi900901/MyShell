@@ -1,39 +1,19 @@
-# ~/Users/mobytang/MyShell/MacOS/mac_general.zsh
-# hsh() {
-#     echo -e "${c_b}内置地方法:${c_x}"
-#     echo -e "${c_y}  setsh         # vscode 打开 自定义shell ( MyShell ) 配置文件${c_x}"
-#     echo -e "${c_y}  reloadsh      # 重载自定义shell配置文件${c_x}"
-#     echo -e "${c_grey}  remove_sh     # 🚫 [已弃用] 删除别名或函数, 请使用 reloadsh${c_x}"
-#     echo -e "${c_y}  type_         # 查看 cd_ 方法是否存在${c_x}"
-#     echo -e "${c_b}  master_         # 允许允许运行任何来源的应用${c_x}"
-#     echo -e "${c_y}  cd_           # 切换到指定目录${c_x}"
-#     echo -e "${c_y}  code_         # 打开 vscode 并切换到指定目录${c_x}"
-#     echo -e "${c_y}  myip_         # 获取本机IP地址${c_x}"
-#     echo -e "${c_y}  new_          # 创建文件夹或文件 "
-#     echo -e "${c_b}git相关操作:${c_x}"
-#     echo -e "${c_y}  gs            # git status${c_x}"
-#     echo -e "${c_y}  gcmt          # git commit -m${c_x}"
-#     echo -e "${c_y}  ga            # git add${c_x}"
-#     echo -e "${c_y}  gpr           # git pull${c_x}"
-#     echo -e "${c_y}  gpo           # git push${c_x}"
-#     echo -e "${c_y}  greset        # git reset --hard${c_x}"
-#     echo -e "${c_y}  gloacl        # git log origin/develop..HEAD ${c_x}"
-# }
-
-
 # 打开 vscode 并切换到指定目录
-setsh() { 
+setsh() {
+    # 用途: vscode 打开sh脚本项目 
     code ~/MyShell 
     }
 
 # 允许运行任何来源的应用
 master_() { 
+    # 用途: 允许运行任何来源的应用
     sudo spctl --master-disable 
     }
 
 
 # 删除指定 alias 的函数
 remove_sh() {
+    # 用途: 删除指定 alias 或 shell 函数
     if [ $# -eq 0 ]; then
         echo "用法: remove_alias <name1> <name2>..."
         echo "删除别名或shell函数."
@@ -58,6 +38,7 @@ remove_sh() {
 
 # 检测方法是否存在
 type_() {
+    # 用途: 检测方法是否存在
     if [ $# -eq 0 ]; then
         echo "用法: type_ <name1>"
         echo "查看是否有指定名称的函数或别名."
@@ -68,6 +49,7 @@ type_() {
 
 # 现在的时间
 now_() {
+    # 用途: 显示当前时间
     # 获取当前日期时间，格式：20251117-10:10
     local current_time=$(date "+%Y%m%d-%H:%M")
     echo -e "${c_g}$current_time${c_x}"
@@ -81,35 +63,37 @@ now_() {
 
 # 本机ip地址
 myip_() {
-  # 尝试多个常见的网络接口
-  local interfaces=("en0" "en1" "en2" "eth0")
-  local ip_address=""
+    # 用途: 显示本机IP地址
+    # 尝试多个常见的网络接口
+    local interfaces=("en0" "en1" "en2" "eth0")
+    local ip_address=""
   
-  for interface in "${interfaces[@]}"; do
-    ip_address=$(ifconfig $interface 2>/dev/null | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}')
-    if [ -n "$ip_address" ]; then
-      break
+    for interface in "${interfaces[@]}"; do
+        ip_address=$(ifconfig $interface 2>/dev/null | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}')
+        if [ -n "$ip_address" ]; then
+        break
+        fi
+    done
+  
+    # 如果还是没找到，尝试其他方法
+    if [ -z "$ip_address" ]; then
+        ip_address=$(ipconfig getifaddr en0 2>/dev/null)
     fi
-  done
+    
+    if [ -z "$ip_address" ]; then
+        echo "无法获取IP地址"
+        return 1
+    fi
   
-  # 如果还是没找到，尝试其他方法
-  if [ -z "$ip_address" ]; then
-    ip_address=$(ipconfig getifaddr en0 2>/dev/null)
-  fi
-  
-  if [ -z "$ip_address" ]; then
-    echo "无法获取IP地址"
-    return 1
-  fi
-  
-  # 复制到剪贴板（不带换行符）
-  printf "%s" "$ip_address" | pbcopy
-  
-  echo "✅ IP地址已复制到剪贴板: $ip_address"
+    # 复制到剪贴板（不带换行符）
+    printf "%s" "$ip_address" | pbcopy
+    
+    echo "✅ IP地址已复制到剪贴板: $ip_address"
 }
 
 # 创建文件或文件夹的便捷函数
 new_() {
+    # 用途: 创建文件或文件夹
     local force_overwrite=false
     local name
 

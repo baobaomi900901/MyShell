@@ -280,7 +280,14 @@ def main():
 
     # 构建新函数列表（按名称排序）
     new_function_names = sorted(unique_functions.keys())
-    new_functions = [{"name": name, "description": unique_functions[name]["description"]} for name in new_function_names]
+    new_functions = [
+        {
+            "name": name,
+            "description": info["description"],
+            "file": info["file"]
+        }
+        for name, info in sorted(unique_functions.items())
+    ]
 
     # 计算添加/删除（仅基于函数名）
     old_set = set(old_function_names)
@@ -301,7 +308,13 @@ def main():
     third_party_packages = sorted(all_packages)
 
     # 构建新 JSON 数据：基于旧数据，更新函数和包列表，保留其他字段（如 pythoPackageIgnore）
-    function_dict = {info["name"]: {"description": info["description"]} for info in new_functions}
+    function_dict = {
+        info["name"]: {
+            "description": info["description"],
+            "file": info["file"]
+        }
+        for info in new_functions
+    }
     json_data = dict(old_data)          # 复制旧数据
     json_data["function"] = function_dict
     json_data["pythonPackage"] = third_party_packages
