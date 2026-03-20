@@ -1,5 +1,4 @@
-﻿# .\Windows\Hooks\src\fun1.py
-import sys
+﻿import sys
 from pathlib import Path
 
 current_file = Path(__file__).resolve()
@@ -33,6 +32,8 @@ def main():
     for i, arg in enumerate(sys.argv[1:], start=1):
         converted = convert_arg(arg)
         print(f"参数{i}: {converted} (类型: {type(converted).__name__})")
+    
+    return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
