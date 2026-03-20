@@ -66,6 +66,7 @@ function hooks_ {
     .DESCRIPTION
         根据第一个参数查找 info.json 中对应的命令，执行关联的脚本（支持 .ps1, .py, .js）。
         若未提供命令，则显示所有可用命令列表。
+        支持在 info.json 中为命令配置 "ignore_exit_code": true 来忽略非零退出码。
     .PARAMETER Command
         要执行的命令名称（对应 info.json 中的键）。
     .PARAMETER ScriptArgs
@@ -123,9 +124,7 @@ function hooks_ {
     $configuredPath = $cmdConfig.script_path
     $description = $cmdConfig.description
 
-    # 解析脚本路径（默认扩展名根据配置或约定？此处先固定为 .ps1，但可根据实际需要扩展）
-    # 简单起见：若未配置路径，默认为 .ps1；若配置了路径，则根据扩展名判断。
-    # 我们可以在解析后根据实际文件扩展名决定执行方式，而不是预先假定。
+    # 解析脚本路径（扩展名只用于默认路径，如果配置了 script_path 则完全使用配置路径）
     try {
         $scriptPath = Resolve-ScriptPath -Command $Command -ConfiguredPath $configuredPath -ScriptDir $scriptDir -Extension '.ps1'
     }
@@ -151,14 +150,19 @@ function hooks_ {
             try {
                 & $scriptPath @ScriptArgs
                 $exitCode = $LASTEXITCODE
+                $ignoreExitCode = $cmdConfig.ignore_exit_code -eq $true
                 if ($exitCode -ne 0) {
-                    throw "脚本退出码: $exitCode"
+                    if ($ignoreExitCode) {
+                        Write-Warning "脚本退出码为 $exitCode，但已配置忽略，继续执行。"
+                    } else {
+                        throw "脚本退出码: $exitCode"
+                    }
+                } else {
+                    Write-Host "✅ 脚本执行成功" -ForegroundColor Green
                 }
-                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
             }
             catch {
                 Write-Error "执行异常: $_"
-                # 保留退出码以便外部感知
                 $global:LASTEXITCODE = 1
             }
         }
@@ -172,10 +176,16 @@ function hooks_ {
             try {
                 & $interpreter $scriptPath $ScriptArgs
                 $exitCode = $LASTEXITCODE
+                $ignoreExitCode = $cmdConfig.ignore_exit_code -eq $true
                 if ($exitCode -ne 0) {
-                    throw "脚本退出码: $exitCode"
+                    if ($ignoreExitCode) {
+                        Write-Warning "脚本退出码为 $exitCode，但已配置忽略，继续执行。"
+                    } else {
+                        throw "脚本退出码: $exitCode"
+                    }
+                } else {
+                    Write-Host "✅ 脚本执行成功" -ForegroundColor Green
                 }
-                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
             }
             catch {
                 Write-Error "执行异常: $_"
@@ -192,10 +202,16 @@ function hooks_ {
             try {
                 & $interpreter $scriptPath $ScriptArgs
                 $exitCode = $LASTEXITCODE
+                $ignoreExitCode = $cmdConfig.ignore_exit_code -eq $true
                 if ($exitCode -ne 0) {
-                    throw "脚本退出码: $exitCode"
+                    if ($ignoreExitCode) {
+                        Write-Warning "脚本退出码为 $exitCode，但已配置忽略，继续执行。"
+                    } else {
+                        throw "脚本退出码: $exitCode"
+                    }
+                } else {
+                    Write-Host "✅ 脚本执行成功" -ForegroundColor Green
                 }
-                Write-Host "✅ 脚本执行成功" -ForegroundColor Green
             }
             catch {
                 Write-Error "执行异常: $_"

@@ -1,4 +1,5 @@
-﻿import sys
+﻿# fun1.py
+import sys
 from pathlib import Path
 
 current_file = Path(__file__).resolve()

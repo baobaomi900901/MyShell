@@ -1,7 +1,8 @@
 {
   "fun1": {
     "script_path": "@MYSHELL\\public\\_script\\fun1.py",
-    "description": "这是我的第一个方法"
+    "description": "这是我的第一个方法",
+    "ignore_exit_code": true
   },
   "fun2": {
     "script_path": ".\\src\\fun2.js",
