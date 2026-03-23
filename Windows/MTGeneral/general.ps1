@@ -151,3 +151,8 @@ function new_ {
         }
     }
 }
+
+function cl {
+    # 用途: 清空终端信息
+    Clear
+}
