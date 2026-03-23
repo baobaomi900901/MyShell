@@ -1,0 +1,8 @@
+# rpalite:lite函数别名变更
+
+# 新增
+[打印日志 | Programming.PrintLog]_别名: ["点击元素"]
+[IF 多条件 | Workflow.TestList]_别名: ["多个"]
+
+# 删除
+[打印日志 | Programming.PrintLog]_别名: ["打印", "日志"]

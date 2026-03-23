@@ -1,4 +1,4 @@
-﻿# .\Windows\MTCode\index.ps1
+﻿# .\Windows\MTGeneral\code_.ps1
 
 # code_ 函数：在 VS Code 中打开配置的路径
 function code_ {

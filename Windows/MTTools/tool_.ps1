@@ -6,7 +6,7 @@
 #   4. license-rpa: 打开 RPA 授权工具
 #   5. set_lite_alias: 设置 lite 内置函数的别名
 
-function tool_ {
+function tools_ {
     # 用途: 工具函数, 详情可以 终端输入 tool_ 查看
     <#
     .SYNOPSIS
