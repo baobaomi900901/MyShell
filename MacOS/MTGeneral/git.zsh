@@ -1,5 +1,6 @@
 # git
 ga() {
+    # 用途: 默认执行 git add. 或者 tab 补全文件
     if [ $# -eq 0 ]; then
         git add .
     else
@@ -11,15 +12,17 @@ ga() {
 compdef _git ga=git-add
 
 gs() {
+    # 用途: 执行 git status
     git status
 }
 
-gcmt () 
-{ 
+gcmt () {
+    # 用途: 执行 git commit -m 
     git commit -m "$@"
 }
 
 greset() {
+    # 用途: 执行 git reset
     case "$1" in
         all)
             git reset --hard HEAD
@@ -50,20 +53,20 @@ _greset_completion() {
 compdef _greset_completion greset
 
 gpr() {
+    # 用途: 执行 git pull --rebase
     git pull --rebase
 }
 
 gpo() {
+    # 用途: 执行 git push origin
     git push origin
 }
 
 gsuk() {
-    git stash -u -k
+    # 用途: 执行 git stash -u -k
+    git stash -u -k 
 }
 gspop() {
+    # 用途: 执行 git stash pop
     git stash pop
-}
-
-glocal() { 
-    git log origin/develop..HEAD --oneline
 }

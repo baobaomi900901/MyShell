@@ -191,69 +191,44 @@ elif current_system == System.MACOS:
 
     print(f"检测到默认 Shell: {shell_name}，配置文件: {profile_file}")
 
-    # 自定义脚本目录
-    myshell_root = os.path.join(home, "Documents", "MyShell")
-    myshell_macos = os.path.join(myshell_root, "macos")
+    # 自定义脚本目录：~/MyShell/MacOS
+    myshell_root = os.path.join(home, "MyShell")
+    myshell_macos = os.path.join(myshell_root, "MacOS")
     os.makedirs(myshell_macos, exist_ok=True)
     print(f"自定义脚本目录已确保存在: {myshell_macos}")
 
-    # ====== 设置环境变量 MYSHELL（指向 MyShell 根目录）======
-    env_var_name = "MYSHELL"
-    desired_value = myshell_root
-    # 检查配置文件中是否已有 export 语句
-    export_line = f'export {env_var_name}="{desired_value}"'
-    need_update = False
+    # 定义三段要添加的文本块
+    blocks = [
+        # 块1: 环境变量 MYSHELL
+        f'export MYSHELL="$HOME/MyShell"',
+        # 块2: 递归加载 ~/MyShell/MacOS 下的所有 .zsh 文件
+        """for func_file in ~/MyShell/MacOS/**/*.zsh(N); do
+  source "$func_file"
+done""",
+        # 块3: zstyle 补全菜单
+        "zstyle ':completion:*' menu select=1"
+    ]
+
+    # 读取现有配置文件内容（如果存在）
     if os.path.exists(profile_file):
         with open(profile_file, 'r', encoding='utf-8') as f:
             existing_content = f.read()
-        if export_line not in existing_content:
-            # 检查是否有其他格式的 MYSHELL 定义
-            import re
-            pattern = re.compile(r'^\s*export\s+MYSHELL\s*=\s*["\']?([^"\'\n]+)["\']?\s*$', re.MULTILINE)
-            if pattern.search(existing_content):
-                print("配置文件中已有 MYSHELL 定义，但值不匹配，将更新。")
-                need_update = True
-            else:
-                need_update = True
     else:
-        need_update = True
+        existing_content = ""
 
-    if need_update:
-        with open(profile_file, 'a', encoding='utf-8') as f:
-            f.write(f"\n# Set MyShell root directory\n{export_line}\n")
-        print(f"已向配置文件追加环境变量 {env_var_name}={desired_value}")
-    else:
-        print(f"环境变量 {env_var_name} 已在配置文件中正确设置，无需修改。")
-
-    # 定义要检查的核心代码块（用于加载自定义脚本）
-    core_block = f"""# Load custom shell scripts from MyShell/macos
-if [ -d "{myshell_macos}" ]; then
-    for file in "${{myshell_macos}}"/*.sh; do
-        if [ -f "$file" ]; then
-            source "$file"
-        fi
-    done
-    for file in "${{myshell_macos}}"/*.zsh; do
-        if [ -f "$file" ]; then
-            source "$file"
-        fi
-    done
-fi"""
-
-    # 处理配置文件
-    if not os.path.exists(profile_file):
-        with open(profile_file, 'w', encoding='utf-8') as f:
-            f.write(core_block + "\n")
-        print(f"已创建配置文件: {profile_file}")
-    else:
-        with open(profile_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        if block_exists_in_file(content, core_block):
-            print("配置文件中已包含所需代码块，无需修改。")
+    # 分别检查每个块是否存在，缺失则追加
+    for block in blocks:
+        if block_exists_in_file(existing_content, block):
+            print(f"配置文件已包含所需代码块:\n{block}\n")
         else:
+            # 追加块（添加换行分隔）
             with open(profile_file, 'a', encoding='utf-8') as f:
-                f.write("\n" + core_block + "\n")
-            print("已向配置文件追加所需代码块。")
+                f.write("\n" + block + "\n")
+            print(f"已向配置文件追加代码块:\n{block}\n")
+
+    # 如果配置文件原本不存在，需要确保写入后生效
+    if not os.path.exists(profile_file):
+        print(f"已创建配置文件: {profile_file}")
 
     # 检查 config/function_tracker.json 并安装 Python 依赖
     if os.path.exists(config_json):
