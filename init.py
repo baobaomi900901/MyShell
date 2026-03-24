@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import platform
 import getpass
 import os
@@ -49,11 +46,32 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 config_json = os.path.join(script_dir, "config", "function_tracker.json")
 
 if current_system == System.WINDOWS:
-    # ========== Windows 分支（保持不变） ==========
+    # ========== Windows 分支（按新需求实现） ==========
     import winreg
 
+    # 1. 安装必要的 Python 库（questionary 和 keyboard）
+    print("检查并安装必要的 Python 库...")
+    try:
+        import questionary
+        import keyboard
+    except ImportError:
+        print("正在安装 questionary 和 keyboard ...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "questionary", "keyboard"], check=True)
+        import questionary
+        import keyboard
+
+    # 获取用户主目录（USERPROFILE 环境变量）
+    userprofile = os.environ.get('USERPROFILE')
+    if not userprofile:
+        userprofile = os.path.expanduser("~")
+    print(f"用户主目录: {userprofile}")
+
+    # 期望的 MYSHELL 路径：%USERPROFILE%\Documents\WindowsPowerShell\MyShell
+    expected_myshell = os.path.join(userprofile, "Documents", "WindowsPowerShell", "MyShell")
+    print(f"期望的 MYSHELL 路径: {expected_myshell}")
+
+    # 定义读取用户环境变量的函数（从注册表）
     def get_user_environment_variable(name):
-        """从 HKEY_CURRENT_USER\Environment 读取用户环境变量，不存在则返回 None"""
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
             value, _ = winreg.QueryValueEx(key, name)
@@ -62,74 +80,102 @@ if current_system == System.WINDOWS:
         except FileNotFoundError:
             return None
 
-    username = getpass.getuser()
-    print(f"当前用户: {username}")
-    docs_folder = os.path.expanduser("~\\Documents")
-    print(f"Documents 文件夹: {docs_folder}")
-
-    # 构建 PowerShell 配置文件路径
-    ps_folder = os.path.join(docs_folder, "WindowsPowerShell")
-    profile_file = os.path.join(ps_folder, "Microsoft.PowerShell_profile.ps1")
-
-    # 创建 MyShell\windows 目录（用于存放自定义脚本）
-    myshell_windows = os.path.join(docs_folder, "WindowsPowerShell", "MyShell", "windows")
-    os.makedirs(myshell_windows, exist_ok=True)
-    print(f"自定义脚本目录已确保存在: {myshell_windows}")
-
-    # ====== 设置环境变量 MYSHELL（指向 MyShell 根目录）======
-    myshell_root = os.path.join(docs_folder, "WindowsPowerShell", "MyShell")
+    # 2. 处理环境变量 MYSHELL
     env_var_name = "MYSHELL"
-    desired_value = myshell_root
-
     current_reg_value = get_user_environment_variable(env_var_name)
-    if current_reg_value != desired_value:
-        try:
-            subprocess.run(
-                ["setx", env_var_name, desired_value],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            if current_reg_value is None:
-                print(f"环境变量 {env_var_name} 已创建: {desired_value}")
-            else:
-                print(f"环境变量 {env_var_name} 已从 '{current_reg_value}' 更新为 '{desired_value}'")
-            # 更新当前进程的环境变量，以便后续操作可能用到
-            os.environ[env_var_name] = desired_value
-        except subprocess.CalledProcessError as e:
-            print(f"设置环境变量失败: {e.stderr}")
-    else:
-        print(f"环境变量 {env_var_name} 已正确设置，无需修改。")
 
-    # 定义要检查的核心代码块（不含注释）
+    # 比较当前值与期望值（标准化路径，忽略大小写和末尾反斜杠）
+    def normalize_path(p):
+        return os.path.normpath(p).lower()
+
+    need_update = False
+    if current_reg_value is None:
+        print(f"环境变量 {env_var_name} 不存在。")
+        need_update = True
+    else:
+        if normalize_path(current_reg_value) != normalize_path(expected_myshell):
+            print(f"当前 MYSHELL 值为: {current_reg_value}")
+            print(f"期望值为: {expected_myshell}")
+            need_update = True
+        else:
+            print("环境变量 MYSHELL 已正确设置。")
+
+    if need_update:
+        # 询问用户是否覆盖
+        answer = questionary.confirm(
+            f"当前 MYSHELL 值不是 {expected_myshell}，是否覆盖？"
+        ).ask()
+        if answer:
+            try:
+                subprocess.run(
+                    ["setx", env_var_name, expected_myshell],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                print(f"环境变量 {env_var_name} 已更新为: {expected_myshell}")
+                # 更新当前进程环境变量
+                os.environ[env_var_name] = expected_myshell
+            except subprocess.CalledProcessError as e:
+                print(f"设置环境变量失败: {e.stderr}")
+                sys.exit(1)
+        else:
+            print(f"本库必须基于 MYSHELL={expected_myshell}，终止进程。")
+            sys.exit(1)
+
+    # 3. 处理 PowerShell 配置文件
+    # 构建 PowerShell 配置文件路径
+    ps_folder = os.path.join(userprofile, "Documents", "WindowsPowerShell")
+    profile_file = os.path.join(ps_folder, "Microsoft.PowerShell_profile.ps1")
+    os.makedirs(ps_folder, exist_ok=True)
+
+    # 定义要检查的核心代码块（包含递归加载和 Import-Module PSReadLine）
     core_block = r"""$functionsDir = "$PSScriptRoot\MyShell\windows"
 if (Test-Path $functionsDir) {
     Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File | ForEach-Object {
         . $_.FullName
     }
-}"""
+}
+Import-Module PSReadLine"""
 
-    full_content = "# {}\n{}".format(profile_file, core_block)
-
-    # 确保目录存在
-    os.makedirs(ps_folder, exist_ok=True)
-
-    # 处理配置文件
-    if not os.path.exists(profile_file):
-        with open(profile_file, 'w', encoding='utf-8-sig') as f:
-            f.write(full_content)
-        print(f"已创建配置文件: {profile_file}")
-    else:
+    # 读取现有内容（如果文件不存在则视为空）
+    if os.path.exists(profile_file):
         with open(profile_file, 'r', encoding='utf-8-sig') as f:
-            content = f.read()
-        if block_exists_in_file(content, core_block):
-            print("配置文件中已包含所需代码块，无需修改。")
-        else:
-            with open(profile_file, 'a', encoding='utf-8-sig') as f:
-                f.write("\n" + full_content)
-            print("已向配置文件追加所需代码块。")
+            existing_content = f.read()
+    else:
+        existing_content = ""
 
-    # 自动打开新窗口执行 . $PROFILE 和 reloadsh
+    # 检查代码块是否已存在
+    if block_exists_in_file(existing_content, core_block):
+        print("已在 Microsoft.PowerShell_profile.ps1 文件中写入 shell 递归循环。")
+    else:
+        # 追加代码块（添加换行）
+        with open(profile_file, 'a', encoding='utf-8-sig') as f:
+            f.write("\n" + core_block + "\n")
+        print("init 已帮你在 Microsoft.PowerShell_profile.ps1 文件中写入 shell 递归循环。")
+
+    # 4. 判断 reloadsh 方法是否存在
+    # 在新 PowerShell 进程中加载配置文件并检查命令是否存在
+    check_cmd = [
+        "powershell", "-NoProfile", "-Command",
+        f". '{profile_file}'; if (Get-Command reloadsh -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}"
+    ]
+    try:
+        subprocess.run(check_cmd, check=True, capture_output=True, text=True)
+        reloadsh_exists = True
+        print("检测到 reloadsh 命令存在。")
+    except subprocess.CalledProcessError:
+        reloadsh_exists = False
+        print("\033[93m未找到 reloadsh 命令，请先在终端执行 . $PROFILE\033[0m")
+        sys.exit(1)  # 终止进程，不继续执行后续
+
+    # 5. 如果 reloadsh 存在，执行原有逻辑（自动打开新窗口并安装依赖）
+    # 创建自定义脚本目录（用于存放自定义函数）
+    myshell_windows = os.path.join(ps_folder, "MyShell", "windows")
+    os.makedirs(myshell_windows, exist_ok=True)
+    print(f"自定义脚本目录已确保存在: {myshell_windows}")
+
+    # 自动打开新窗口执行 . $PROFILE 和 reloadsh（并设置 UTF-8 编码）
     print("正在新窗口中执行 . $PROFILE 和 reloadsh（已设置 UTF-8 编码）...")
     subprocess.run(
         ["start", "powershell", "-NoExit", "-Command",
@@ -171,7 +217,7 @@ if (Test-Path $functionsDir) {
         print(f"未找到配置文件 {config_json}，跳过 Python 依赖安装。")
 
 elif current_system == System.MACOS:
-    # ========== macOS 分支（修正版） ==========
+    # ========== macOS 分支（保持之前的修改） ==========
     username = getpass.getuser()
     print(f"当前用户: {username}")
     home = os.path.expanduser("~")
