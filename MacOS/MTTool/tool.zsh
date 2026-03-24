@@ -3,9 +3,6 @@
 # 获取当前脚本所在目录的绝对路径（仅在本文件内使用）
 tool_SELFPATH="${0:A:h}"
 
-# 加载公共函数
-source "${tool_SELFPATH}/utils.zsh"
-
 # 定义 tool_ 函数
 tool_() {
     local config_file="$tool_SELFPATH/config.json"

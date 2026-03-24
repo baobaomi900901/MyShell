@@ -3,9 +3,6 @@
 # 获取当前脚本所在目录的绝对路径，并导出为环境变量，供补全函数使用
 tmpl_SELFPATH="${0:A:h}"
 
-# 加载公共函数
-source "${tmpl_SELFPATH}/utils.zsh"
-
 # 定义 tmpl_ 函数
 tmpl() {
     local config_file="$tmpl_SELFPATH/config.json"
