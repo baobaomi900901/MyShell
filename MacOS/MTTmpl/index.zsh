@@ -1,42 +1,10 @@
 #!/usr/bin/env zsh
+
 # 获取当前脚本所在目录的绝对路径，并导出为环境变量，供补全函数使用
 tmpl_SELFPATH="${0:A:h}"
 
-# 路径解析函数
-resolve_path() {
-    local path="$1"
-    local resolved
-
-    # 处理 @MYSHELL 前缀
-    if [[ "$path" == "@MYSHELL"* ]]; then
-        local myshell="${MYSHELL:-$tmpl_SELFPATH/..}"
-        # 去掉 @MYSHELL 前缀，拼接到 myshell 后
-        resolved="${myshell}/${path#@MYSHELL}"
-        # 去掉可能重复的 / 并转换为绝对路径
-        resolved="${resolved:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 处理相对路径（以 ./ 或 ../ 开头）
-    if [[ "$path" == "./"* ]] || [[ "$path" == "../"* ]]; then
-        resolved="${tmpl_SELFPATH}/${path}"
-        resolved="${resolved:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 处理 ~ 扩展
-    if [[ "$path" == "~"* ]]; then
-        resolved="${path:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 绝对路径或其它，转换为绝对路径
-    echo "${path:a}"
-    return 0
-}
+# 加载公共函数
+source "${tmpl_SELFPATH}/utils.zsh"
 
 # 定义 tmpl_ 函数
 tmpl() {
@@ -95,9 +63,9 @@ else:
         return 1
     fi
 
-    # 解析路径
+    # 解析路径，传入 tmpl_SELFPATH 作为基准目录
     local resolved
-    resolved=$(resolve_path "$script_path")
+    resolved=$(resolve_path "$script_path" "$tmpl_SELFPATH")
     if [[ $? -ne 0 ]]; then
         echo "Failed to resolve path: $script_path" >&2
         return 1

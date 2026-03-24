@@ -157,3 +157,43 @@ cl() {
     # 用途: 清空终端信息
     clear
 }
+
+
+# 公共函数
+
+# 路径解析函数
+# 用法：resolve_path <路径> [基准目录]
+# 基准目录默认为当前工作目录，用于解析相对路径（./ 或 ../ 开头）
+resolve_path() {
+    local path="$1"
+    local base_dir="${2:-$PWD}"
+    local resolved
+
+    # 处理 @MYSHELL 前缀
+    if [[ "$path" == "@MYSHELL"* ]]; then
+        local myshell="${MYSHELL:-$base_dir/..}"
+        resolved="${myshell}/${path#@MYSHELL}"
+        resolved="${resolved:a}"
+        echo "$resolved"
+        return 0
+    fi
+
+    # 处理相对路径（以 ./ 或 ../ 开头）
+    if [[ "$path" == "./"* ]] || [[ "$path" == "../"* ]]; then
+        resolved="${base_dir}/${path}"
+        resolved="${resolved:a}"
+        echo "$resolved"
+        return 0
+    fi
+
+    # 处理 ~ 扩展
+    if [[ "$path" == "~"* ]]; then
+        resolved="${path:a}"
+        echo "$resolved"
+        return 0
+    fi
+
+    # 绝对路径或其它，转换为绝对路径
+    echo "${path:a}"
+    return 0
+}

@@ -3,41 +3,8 @@
 # 获取当前脚本所在目录的绝对路径（仅在本文件内使用）
 tool_SELFPATH="${0:A:h}"
 
-# 路径解析函数
-resolve_path() {
-    local path="$1"
-    local resolved
-
-    # 处理 @MYSHELL 前缀
-    if [[ "$path" == "@MYSHELL"* ]]; then
-        local myshell="${MYSHELL:-$tool_SELFPATH/..}"
-        # 去掉 @MYSHELL 前缀，拼接到 myshell 后
-        resolved="${myshell}/${path#@MYSHELL}"
-        # 去掉可能重复的 / 并转换为绝对路径
-        resolved="${resolved:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 处理相对路径（以 ./ 或 ../ 开头）
-    if [[ "$path" == "./"* ]] || [[ "$path" == "../"* ]]; then
-        resolved="${tool_SELFPATH}/${path}"
-        resolved="${resolved:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 处理 ~ 扩展
-    if [[ "$path" == "~"* ]]; then
-        resolved="${path:a}"
-        echo "$resolved"
-        return 0
-    fi
-
-    # 绝对路径或其它，转换为绝对路径
-    echo "${path:a}"
-    return 0
-}
+# 加载公共函数
+source "${tool_SELFPATH}/utils.zsh"
 
 # 定义 tool_ 函数
 tool_() {
@@ -96,9 +63,9 @@ else:
         return 1
     fi
 
-    # 解析路径
+    # 解析路径，传入 tool_SELFPATH 作为基准目录
     local resolved
-    resolved=$(resolve_path "$script_path")
+    resolved=$(resolve_path "$script_path" "$tool_SELFPATH")
     if [[ $? -ne 0 ]]; then
         echo "Failed to resolve path: $script_path" >&2
         return 1
@@ -152,7 +119,7 @@ else:
 }
 
 # 定义补全函数：从 config.json 中提取所有方法名作为候选项
-_tool() {
+_tool_tab_for() {
     local -a commands
     local config_file="$tool_SELFPATH/config.json"
     if [[ -f "$config_file" ]]; then
@@ -168,4 +135,4 @@ with open(sys.argv[1]) as f:
 }
 
 # 注册补全函数到 tool_ 命令
-compdef _tool tool_
+compdef _tool_tab_for tool_
