@@ -59,8 +59,11 @@ hsh
 
 ### 关于 tmpl
 
-tmpl 这是一个模板文件夹(有 mac 和 windows 两种), 内置一个入口文件 index.zhs/index.ps1,
+MTTmpl 这是一个模板文件夹(有 mac 和 windows 两种), 内置一个入口文件 index.zhs/index.ps1,
 一个配置文件 config.json.
 
 使用时请复制整个文件夹, 在 index.zhs/ index.ps1 中, 找到所有 tmpl, 修改成你想要执行的方法名称就可以使用.
+
 ![alt text](assets/README/image-1.png)
+
+![alt text](assets/README/image-2.png)

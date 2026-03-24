@@ -156,3 +156,66 @@ function cl {
     # 用途: 清空终端信息
     Clear
 }
+
+
+
+
+# 公共方法区域
+
+# 辅助函数：读取并解析 config.json（支持以 # 开头的注释）
+function Get-CustomConfig {
+    param([string]$JsonPath)
+
+    if (-not (Test-Path $JsonPath)) {
+        Write-Error "找不到配置文件: $JsonPath"
+        return $null
+    }
+
+    try {
+        $rawLines = Get-Content $JsonPath -Raw -Encoding UTF8 -ErrorAction Stop
+        # 移除以 # 开头的注释行（允许行前有空格）
+        $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+        $config = $cleanJson | ConvertFrom-Json
+        return $config
+    }
+    catch {
+        Write-Error "解析 config.json 失败: $_"
+        return $null
+    }
+}
+
+# 内部函数：解析脚本路径，支持默认约定和 @MYSHELL 占位符
+function Resolve-ScriptPath {
+    param(
+        [string]$Command,
+        [string]$ConfiguredPath,          # 可能为 $null 或空
+        [string]$ScriptDir,
+        [string]$Extension                 # 如 '.ps1'
+    )
+
+    # 若未配置路径，则使用默认路径: .\src\<Command><Extension>
+    if ([string]::IsNullOrEmpty($ConfiguredPath)) {
+        $resolved = Join-Path $ScriptDir "src" "$Command$Extension"
+        Write-Verbose "未配置 script_path，使用默认路径: $resolved"
+        return $resolved
+    }
+
+    $path = $ConfiguredPath
+
+    # 处理环境变量占位符 @MYSHELL
+    if ($path -like '@MYSHELL*') {
+        $myshell = $env:MYSHELL
+        if (-not $myshell) {
+            throw "环境变量 MYSHELL 未设置，无法解析路径: $path"
+        }
+        $path = $path -replace '^@MYSHELL', $myshell
+        Write-Verbose "已替换 @MYSHELL => $myshell"
+    }
+
+    # 若非绝对路径，则基于脚本目录拼接
+    if (-not [System.IO.Path]::IsPathRooted($path)) {
+        $path = Join-Path $ScriptDir $path
+    }
+
+    return $path
+}

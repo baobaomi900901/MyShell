@@ -1,79 +1,21 @@
 ﻿# .\Windows\Tool\index.ps1
-# 作用: hooks_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
-
-# 辅助函数：读取并解析 info.json（支持以 # 开头的注释）
-function Get-ToolConfig {
-    param([string]$JsonPath)
-
-    if (-not (Test-Path $JsonPath)) {
-        Write-Error "找不到配置文件: $JsonPath"
-        return $null
-    }
-
-    try {
-        $rawLines = Get-Content $JsonPath -Raw -Encoding UTF8 -ErrorAction Stop
-        # 移除以 # 开头的注释行（允许行前有空格）
-        $cleanJson = ($rawLines -split "`r`n|`n" | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
-        $config = $cleanJson | ConvertFrom-Json
-        return $config
-    }
-    catch {
-        Write-Error "解析 info.json 失败: $_"
-        return $null
-    }
-}
-
-# 内部函数：解析脚本路径，支持默认约定和 @MYSHELL 占位符
-function Resolve-ScriptPath {
-    param(
-        [string]$Command,
-        [string]$ConfiguredPath,          # 可能为 $null 或空
-        [string]$ScriptDir,
-        [string]$Extension                 # 如 '.ps1'
-    )
-
-    # 若未配置路径，则使用默认路径: .\src\<Command><Extension>
-    if ([string]::IsNullOrEmpty($ConfiguredPath)) {
-        $resolved = Join-Path $ScriptDir "src" "$Command$Extension"
-        Write-Verbose "未配置 script_path，使用默认路径: $resolved"
-        return $resolved
-    }
-
-    $path = $ConfiguredPath
-
-    # 处理环境变量占位符 @MYSHELL
-    if ($path -like '@MYSHELL*') {
-        $myshell = $env:MYSHELL
-        if (-not $myshell) {
-            throw "环境变量 MYSHELL 未设置，无法解析路径: $path"
-        }
-        $path = $path -replace '^@MYSHELL', $myshell
-        Write-Verbose "已替换 @MYSHELL => $myshell"
-    }
-
-    # 若非绝对路径，则基于脚本目录拼接
-    if (-not [System.IO.Path]::IsPathRooted($path)) {
-        $path = Join-Path $ScriptDir $path
-    }
-
-    return $path
-}
+# 作用: tool_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
 function tool_ {
     <#
     .SYNOPSIS
-        执行由 info.json 定义的命令脚本。
+        执行由 config.json 定义的命令脚本。
     .DESCRIPTION
-        根据第一个参数查找 info.json 中对应的命令，执行关联的脚本（支持 .ps1, .py, .js）。
+        根据第一个参数查找 config.json 中对应的命令，执行关联的脚本（支持 .ps1, .py, .js）。
         若未提供命令，则显示所有可用命令列表。
-        支持在 info.json 中为命令配置 "ignore_exit_code": true 来忽略非零退出码。
+        支持在 config.json 中为命令配置 "ignore_exit_code": true 来忽略非零退出码。
     .PARAMETER Command
-        要执行的命令名称（对应 info.json 中的键）。
+        要执行的命令名称（对应 config.json 中的键）。
     .PARAMETER ScriptArgs
         传递给目标脚本的额外参数。
     .EXAMPLE
-        hooks_                      # 列出所有命令
-        hooks_ fun3 "Hello" -Force  # 执行 fun3 命令，传递参数
+        tool_                      # 列出所有命令
+        tool_ fun3 "Hello" -Force  # 执行 fun3 命令，传递参数
     #>
     [CmdletBinding()]
     param(
@@ -97,8 +39,8 @@ function tool_ {
     }
 
     # 读取配置
-    $jsonPath = Join-Path $scriptDir "info.json"
-    $config = Get-ToolConfig -JsonPath $jsonPath
+    $jsonPath = Join-Path $scriptDir "config.json"
+    $config = Get-CustomConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
     # 无命令：显示列表s
@@ -136,7 +78,7 @@ function tool_ {
     # 检查脚本是否存在
     if (-not (Test-Path $scriptPath)) {
         Write-Error "脚本文件不存在: $scriptPath"
-        Write-Host "  请检查 info.json 中的 script_path 配置，或确保默认路径 src\$Command.ps1 存在。" -ForegroundColor Yellow
+        Write-Host "  请检查 config.json 中的 script_path 配置，或确保默认路径 src\$Command.ps1 存在。" -ForegroundColor Yellow
         return
     }
 
@@ -227,12 +169,12 @@ function tool_ {
 
 # --- Tab 补全器 ---
 $scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-$script:jsonPathForCompletion = Join-Path $scriptDirForCompletion "info.json"
+$script:jsonPathForCompletion = Join-Path $scriptDirForCompletion "config.json"
 
 Register-ArgumentCompleter -CommandName tool_ -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-    $config = Get-ToolConfig -JsonPath $script:jsonPathForCompletion
+    $config = Get-CustomConfig -JsonPath $script:jsonPathForCompletion
     if (-not $config) { return $null }
 
     $allCommands = $config.PSObject.Properties.Name
