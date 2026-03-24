@@ -49,7 +49,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 config_json = os.path.join(script_dir, "config", "function_tracker.json")
 
 if current_system == System.WINDOWS:
-    # ========== Windows 分支 ==========
+    # ========== Windows 分支（保持不变） ==========
     import winreg
 
     def get_user_environment_variable(name):
@@ -171,102 +171,150 @@ if (Test-Path $functionsDir) {
         print(f"未找到配置文件 {config_json}，跳过 Python 依赖安装。")
 
 elif current_system == System.MACOS:
-    # ========== macOS 分支 ==========
+    # ========== macOS 分支（修正版） ==========
     username = getpass.getuser()
     print(f"当前用户: {username}")
     home = os.path.expanduser("~")
     print(f"Home 目录: {home}")
 
-    # 检测默认 shell
-    shell = os.environ.get('SHELL', '')
-    if 'zsh' in shell:
-        profile_file = os.path.join(home, ".zshrc")
-        shell_name = "zsh"
-    elif 'bash' in shell:
-        profile_file = os.path.join(home, ".bash_profile")
-        shell_name = "bash"
-    else:
-        profile_file = os.path.join(home, ".profile")
-        shell_name = "sh"
+    # 1. 安装 questionary 和 keyboard 库
+    print("检查并安装必要的 Python 库...")
+    try:
+        import questionary
+        import keyboard
+    except ImportError:
+        print("正在安装 questionary 和 keyboard ...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "questionary", "keyboard"], check=True)
+        import questionary
+        import keyboard
 
-    print(f"检测到默认 Shell: {shell_name}，配置文件: {profile_file}")
+    # 2. 确定配置文件路径（.zshrc）
+    profile_file = os.path.join(home, ".zshrc")
+    print(f"目标配置文件: {profile_file}")
 
-    # 自定义脚本目录：~/MyShell/MacOS
-    myshell_root = os.path.join(home, "MyShell")
-    myshell_macos = os.path.join(myshell_root, "MacOS")
-    os.makedirs(myshell_macos, exist_ok=True)
-    print(f"自定义脚本目录已确保存在: {myshell_macos}")
-
-    # 定义三段要添加的文本块
-    blocks = [
-        # 块1: 环境变量 MYSHELL
-        f'export MYSHELL="$HOME/MyShell"',
-        # 块2: 递归加载 ~/MyShell/MacOS 下的所有 .zsh 文件
-        """for func_file in ~/MyShell/MacOS/**/*.zsh(N); do
-  source "$func_file"
-done""",
-        # 块3: zstyle 补全菜单
-        "zstyle ':completion:*' menu select=1"
-    ]
-
-    # 读取现有配置文件内容（如果存在）
-    if os.path.exists(profile_file):
-        with open(profile_file, 'r', encoding='utf-8') as f:
-            existing_content = f.read()
-    else:
-        existing_content = ""
-
-    # 分别检查每个块是否存在，缺失则追加
-    for block in blocks:
-        if block_exists_in_file(existing_content, block):
-            print(f"配置文件已包含所需代码块:\n{block}\n")
-        else:
-            # 追加块（添加换行分隔）
-            with open(profile_file, 'a', encoding='utf-8') as f:
-                f.write("\n" + block + "\n")
-            print(f"已向配置文件追加代码块:\n{block}\n")
-
-    # 如果配置文件原本不存在，需要确保写入后生效
+    # 确保配置文件存在
     if not os.path.exists(profile_file):
-        print(f"已创建配置文件: {profile_file}")
+        open(profile_file, 'w').close()
+        print(f"已创建空配置文件: {profile_file}")
 
-    # 检查 config/function_tracker.json 并安装 Python 依赖
-    if os.path.exists(config_json):
-        print("找到 function_tracker.json，开始检查 Python 依赖...")
-        try:
-            with open(config_json, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            packages = data.get('pythonPackage', [])
-            if packages:
-                print(f"需要检查的包: {packages}")
-                for pkg in packages:
-                    print(f"检查 {pkg}...")
-                    check_result = subprocess.run(
-                        [sys.executable, "-m", "pip", "show", pkg],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    if check_result.returncode == 0:
-                        print(f"✅ {pkg} 已安装，跳过。")
-                        continue
+    # 读取现有内容
+    with open(profile_file, 'r', encoding='utf-8') as f:
+        content = f.read()
 
-                    print(f"正在安装 {pkg}...")
-                    result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", pkg])
-                    if result.returncode == 0:
-                        print(f"✅ {pkg} 安装成功。")
-                    else:
-                        print(f"❌ {pkg} 安装失败，请手动执行: pip install {pkg}")
+    # 2. 处理环境变量 MYSHELL
+    env_line_pattern = "export MYSHELL="
+    desired_env = 'export MYSHELL="$HOME/MyShell"'
+    lines = content.splitlines()
+    env_index = None
+    existing_env = None
+    for i, line in enumerate(lines):
+        if line.startswith(env_line_pattern):
+            env_index = i
+            existing_env = line.strip()
+            break
+
+    # 期望的绝对路径
+    expected_abs = os.path.join(home, "MyShell")
+
+    if env_index is not None:
+        # 提取值部分
+        value_part = existing_env[len(env_line_pattern):].strip()
+        # 去除引号
+        if (value_part.startswith('"') and value_part.endswith('"')) or \
+           (value_part.startswith("'") and value_part.endswith("'")):
+            value_part = value_part[1:-1]
+        # 展开 $HOME 和 ~
+        if value_part.startswith('$HOME'):
+            value_part = value_part.replace('$HOME', home)
+        elif value_part.startswith('~'):
+            value_part = os.path.expanduser(value_part)
+        actual_abs = os.path.normpath(value_part)
+        if actual_abs != expected_abs:
+            print(f"当前 MYSHELL 设置为: {existing_env}")
+            answer = questionary.confirm(f"当前 MYSHELL 值不是 {desired_env}，是否覆盖？").ask()
+            if answer:
+                lines[env_index] = desired_env
+                with open(profile_file, 'w', encoding='utf-8') as f:
+                    f.write("\n".join(lines) + "\n")
+                print("已更新 MYSHELL 环境变量。")
             else:
-                print("没有需要安装的 Python 包。")
-        except Exception as e:
-            print(f"安装 Python 包时出错: {e}")
+                print("本库必须基于 export MYSHELL=\"$HOME/MyShell\"，终止进程。")
+                sys.exit(1)
+        else:
+            print("MYSHELL 环境变量已正确设置。")
     else:
-        print(f"未找到配置文件 {config_json}，跳过 Python 依赖安装。")
+        # 不存在，直接追加
+        with open(profile_file, 'a', encoding='utf-8') as f:
+            f.write("\n" + desired_env + "\n")
+        print("已添加 MYSHELL 环境变量到配置文件。")
 
-    # 提示用户手动 source 配置文件或重启终端
-    print("\n配置已更新。请执行以下命令使配置立即生效：")
-    print(f"source {profile_file}")
-    print("或者直接打开新的终端窗口。")
+    # 重新读取文件内容（因为可能被修改过）
+    with open(profile_file, 'r', encoding='utf-8') as f:
+        content = f.read()
 
+    # 3. 判断并添加 shell 递归循环块
+    loop_block = """for func_file in ~/MyShell/MacOS/**/*.zsh(N); do
+  source "$func_file"
+done
+zstyle ':completion:*' menu select=1"""
+    if block_exists_in_file(content, loop_block):
+        print("已在 .zshrc 文件中写入 shell 递归循环。")
+    else:
+        with open(profile_file, 'a', encoding='utf-8') as f:
+            f.write("\n" + loop_block + "\n")
+        print("init 已帮你在 .zshrc 文件中写入 shell 递归循环。")
+
+    # 4. 判断 reloadsh 方法并执行
+    check_cmd = ["zsh", "-c", f"source {profile_file} && type reloadsh >/dev/null 2>&1"]
+    try:
+        subprocess.run(check_cmd, check=True, capture_output=True)
+        # 存在，执行 reloadsh
+        subprocess.run(["zsh", "-c", f"source {profile_file} && reloadsh"])
+        print("已执行 reloadsh 命令。")
+
+        # 5. reloadsh 成功后，安装 pythonPackage 中的包
+        # 构建 config.json 路径：优先使用 MYSHELL 环境变量，若不存在则使用 ~/MyShell
+        myshell_env = os.environ.get('MYSHELL')
+        if myshell_env:
+            config_json_mac = os.path.join(myshell_env, "config", "function_tracker.json")
+        else:
+            config_json_mac = os.path.join(home, "MyShell", "config", "function_tracker.json")
+
+        if os.path.exists(config_json_mac):
+            print("找到 function_tracker.json，开始检查 Python 依赖...")
+            try:
+                with open(config_json_mac, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                packages = data.get('pythonPackage', [])
+                if packages:
+                    print(f"需要检查的包: {packages}")
+                    for pkg in packages:
+                        print(f"检查 {pkg}...")
+                        check_result = subprocess.run(
+                            [sys.executable, "-m", "pip", "show", pkg],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL
+                        )
+                        if check_result.returncode == 0:
+                            print(f"✅ {pkg} 已安装，跳过。")
+                            continue
+
+                        print(f"正在安装 {pkg}...")
+                        result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", pkg])
+                        if result.returncode == 0:
+                            print(f"✅ {pkg} 安装成功。")
+                        else:
+                            print(f"❌ {pkg} 安装失败，请手动执行: pip install {pkg}")
+                else:
+                    print("没有需要安装的 Python 包。")
+            except Exception as e:
+                print(f"安装 Python 包时出错: {e}")
+        else:
+            print(f"未找到配置文件 {config_json_mac}，跳过 Python 依赖安装。")
+
+    except subprocess.CalledProcessError:
+        # 黄色提示，已去除句号
+        print("\033[93m未找到 reloadsh 命令，请先在终端执行 source ~/.zshrc\033[0m")
+        
 else:
     print("其他操作系统，暂无自动配置。")
