@@ -40,7 +40,7 @@ function tmpl {
 
     # 读取配置
     $jsonPath = Join-Path $scriptDir "config.json"
-    $config = Get-HooksConfig -JsonPath $jsonPath
+    $config = Get-CustomConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
     # 无命令：显示列表
@@ -174,7 +174,7 @@ $script:jsonPathForCompletion = Join-Path $scriptDirForCompletion "config.json"
 Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-    $config = Get-HooksConfig -JsonPath $script:jsonPathForCompletion
+    $config = Get-CustomConfig -JsonPath $script:jsonPathForCompletion
     if (-not $config) { return $null }
 
     $allCommands = $config.PSObject.Properties.Name
