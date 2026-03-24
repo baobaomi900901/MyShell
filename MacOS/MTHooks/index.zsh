@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
-
 # 获取当前脚本所在目录的绝对路径，并导出为环境变量，供补全函数使用
-export HOOKS_ZSH_DIR="${0:A:h}"
+tmpl_SELFPATH="${0:A:h}"
 
 # 路径解析函数
 resolve_path() {
@@ -10,7 +9,7 @@ resolve_path() {
 
     # 处理 @MYSHELL 前缀
     if [[ "$path" == "@MYSHELL"* ]]; then
-        local myshell="${MYSHELL:-$HOOKS_ZSH_DIR/..}"
+        local myshell="${MYSHELL:-$tmpl_SELFPATH/..}"
         # 去掉 @MYSHELL 前缀，拼接到 myshell 后
         resolved="${myshell}/${path#@MYSHELL}"
         # 去掉可能重复的 / 并转换为绝对路径
@@ -21,7 +20,7 @@ resolve_path() {
 
     # 处理相对路径（以 ./ 或 ../ 开头）
     if [[ "$path" == "./"* ]] || [[ "$path" == "../"* ]]; then
-        resolved="${HOOKS_ZSH_DIR}/${path}"
+        resolved="${tmpl_SELFPATH}/${path}"
         resolved="${resolved:a}"
         echo "$resolved"
         return 0
@@ -39,11 +38,11 @@ resolve_path() {
     return 0
 }
 
-# 定义 hooks_ 函数
-hooks_() {
-    local info_file="$HOOKS_ZSH_DIR/info.json"
-    if [[ ! -f "$info_file" ]]; then
-        echo "info.json not found in $HOOKS_ZSH_DIR" >&2
+# 定义 tmpl_ 函数
+tmpl() {
+    local config_file="$tmpl_SELFPATH/config.json"
+    if [[ ! -f "$config_file" ]]; then
+        echo "config.json not found in $tmpl_SELFPATH" >&2
         return 1
     fi
 
@@ -61,10 +60,10 @@ if not data:
 
 max_len = max(len(k) for k in data.keys())
 print("内置命令:")
-for name, info in data.items():
-    desc = info.get("description", "")
+for name, config in data.items():
+    desc = config.get("description", "")
     print(f"  {name:<{max_len}}    {desc}")
-' "$info_file"
+' "$config_file"
         return
     fi
 
@@ -86,8 +85,8 @@ if cmd in data:
     print(data[cmd].get("script_path", ""))
 else:
     sys.exit(1)
-' "$info_file" "$cmd") || {
-        echo "Command '$cmd' not found in info.json" >&2
+' "$config_file" "$cmd") || {
+        echo "Command '$cmd' not found in config.json" >&2
         return 1
     }
 
@@ -151,21 +150,21 @@ else:
     fi
 }
 
-# 定义补全函数：从 info.json 中提取所有方法名作为候选项
-_hooks() {
+# 定义补全函数：从 config.json 中提取所有方法名作为候选项
+_tmpl_tab_for() {
     local -a commands
-    local info_file="$HOOKS_ZSH_DIR/info.json"
-    if [[ -f "$info_file" ]]; then
+    local config_file="$tmpl_SELFPATH/config.json"
+    if [[ -f "$config_file" ]]; then
         commands=(${(f)"$(python3 -c '
 import json, sys
 with open(sys.argv[1]) as f:
     data = json.load(f)
     for key in data.keys():
         print(key)
-' "$info_file")"})
+' "$config_file")"})
     fi
     _describe 'command' commands
 }
 
-# 注册补全函数到 hooks_ 命令
-compdef _hooks hooks_
+# 注册补全函数到 tmpl 命令
+compdef _tmpl_tab_for tmpl
