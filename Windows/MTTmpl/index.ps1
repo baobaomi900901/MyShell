@@ -1,4 +1,4 @@
-﻿# .\Windows\Hooks\index.ps1
+﻿# .\Windows\MTTmpl\index.ps1
 # 作用: tmpl 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
 function tmpl {
@@ -169,12 +169,12 @@ function tmpl {
 
 # --- Tab 补全器 ---
 $scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-$script:jsonPathForCompletion = Join-Path $scriptDirForCompletion "config.json"
+$script:tmpl_configPath = Join-Path $scriptDirForCompletion "config.json"
 
 Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-    $config = Get-CustomConfig -JsonPath $script:jsonPathForCompletion
+    $config = Get-CustomConfig -JsonPath $script:tmpl_configPath
     if (-not $config) { return $null }
 
     $allCommands = $config.PSObject.Properties.Name

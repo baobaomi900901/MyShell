@@ -164,7 +164,10 @@ function cl {
 
 # 辅助函数：读取并解析 config.json（支持以 # 开头的注释）
 function Get-CustomConfig {
-    param([string]$JsonPath)
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$JsonPath
+    )
 
     if (-not (Test-Path $JsonPath)) {
         Write-Error "找不到配置文件: $JsonPath"
