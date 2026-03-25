@@ -27,7 +27,7 @@ function reloadsh {
     $windowsDir = Join-Path $env:myshell "windows"
     $public_script_dir = Join-Path $env:myshell "public"
     $system_type = "windows"
-    $jsonFile = Join-Path $env:myshell "config\function_tracker.json"
+    $jsonFile = Join-Path $env:myshell "config\private\function_tracker.json"
 
     # 调用 Python 脚本，传递必需参数，同时保留用户可能传入的额外参数
     & python $pythonScript --system-dir "$windowsDir" --public-script-dir "$public_script_dir" --system-type "$system_type" --json-file "$jsonFile" @args
