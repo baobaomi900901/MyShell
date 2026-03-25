@@ -2,7 +2,7 @@
 
 # 主函数：管理密码
 pw_() {
-    local config_file="$HOME/MyShell/config/password.json"
+    local config_file="$HOME/MyShell/config/private/password.json"
     
     if [[ ! -f "$config_file" ]]; then
         echo -e "${c_r}错误: 密码配置文件不存在 $config_file${c_x}"
@@ -67,7 +67,7 @@ pw_() {
 
 # 增强的补全函数
 _pw_completion() {
-    local config_file="$HOME/MyShell/config/password.json"
+    local config_file="$HOME/MyShell/config/private/password.json"
     
     if [[ ! -f "$config_file" ]]; then
         return 1

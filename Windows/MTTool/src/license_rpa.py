@@ -17,13 +17,13 @@ def is_process_running(process_name):
         return False
 
 def read_password_from_json():
-    """从环境变量 MYSHELL/config/password.json 读取 rpa.password"""
+    """从环境变量 MYSHELL/config/private/password.json 读取 rpa.password"""
     myshell = os.environ.get('MYSHELL')
     if not myshell:
         logging.error("环境变量 MYSHELL 未设置")
         return None
 
-    json_path = os.path.join(myshell, 'config', 'password.json')
+    json_path = os.path.join(myshell, 'config', 'private', 'password.json')
     if not os.path.exists(json_path):
         logging.error(f"密码文件不存在: {json_path}")
         return None

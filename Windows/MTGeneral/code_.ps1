@@ -44,10 +44,10 @@ Register-ArgumentCompleter -CommandName code_ -ScriptBlock {
 
     # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
     if ($env:MYSHELL) {
-        $configFile = Join-Path $env:MYSHELL "config\path_code.json"
+        $configFile = Join-Path $env:MYSHELL "config\private\path_code.json"
     } else {
         $userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath('UserProfile') }
-        $configFile = Join-Path $userProfile "Documents\WindowsPowerShell\MyShell\config\path_code.json"
+        $configFile = Join-Path $userProfile "Documents\WindowsPowerShell\MyShell\config\private\path_code.json"
     }
 
     if (-not (Test-Path $configFile)) {

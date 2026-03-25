@@ -20,12 +20,12 @@ def get_config_path():
     """返回配置文件（path_code.json）路径"""
     myshell = os.environ.get('MYSHELL')
     if myshell:
-        return Path(myshell) / "config" / "path_code.json"
+        return Path(myshell) / "config" / "private" / "path_code.json"
     # 兼容旧路径
     user_profile = os.environ.get('USERPROFILE', '')
     if not user_profile:
         user_profile = str(Path.home())
-    return Path(user_profile) / "Documents" / "WindowsPowerShell" / "MyShell" / "config" / "path_code.json"
+    return Path(user_profile) / "Documents" / "WindowsPowerShell" / "MyShell" / "config" / "private" / "path_code.json"
 
 def load_config(config_path):
     """加载并解析 JSON 配置文件"""

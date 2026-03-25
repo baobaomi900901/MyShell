@@ -40,9 +40,9 @@ else:
 
 print(current_system.value)
 
-# 获取当前脚本所在目录（用于定位 config/function_tracker.json）
+# 获取当前脚本所在目录（用于定位 config/private/function_tracker.json）
 script_dir = os.path.dirname(os.path.abspath(__file__))
-config_json = os.path.join(script_dir, "config", "function_tracker.json")
+config_json = os.path.join(script_dir, "config", "private", "function_tracker.json")
 
 # ----------------------------------------------------------------------
 # Windows 分支
@@ -357,9 +357,9 @@ zstyle ':completion:*' menu select=1"""
     # 5. 安装 Python 依赖（从 function_tracker.json）
     myshell_env = os.environ.get('MYSHELL')
     if myshell_env:
-        config_json_mac = os.path.join(myshell_env, "config", "function_tracker.json")
+        config_json_mac = os.path.join(myshell_env, "config", "private", "function_tracker.json")
     else:
-        config_json_mac = os.path.join(home, "MyShell", "config", "function_tracker.json")
+        config_json_mac = os.path.join(home, "MyShell", "config", "private", "function_tracker.json")
 
     if os.path.exists(config_json_mac):
         print("找到 function_tracker.json，开始检查 Python 依赖...")

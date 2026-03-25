@@ -34,7 +34,7 @@ cd_() {
 }
 
 _cd_completion() {
-    local config_file="$HOME/MyShell/config/path.json"
+    local config_file="$HOME/MyShell/config/private/path.json"
     
     if [[ ! -f "$config_file" ]]; then
         return 1

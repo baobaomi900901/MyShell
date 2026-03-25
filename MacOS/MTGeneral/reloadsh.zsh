@@ -9,7 +9,7 @@ reloadsh() {
     local system_type="mac"
     local system_dir="${MYSHELL}/MacOS"
     local public_script_dir="${MYSHELL}/public"
-    local json_file="${MYSHELL}/config/function_tracker.json"
+    local json_file="${MYSHELL}/config/private/function_tracker.json"
     local script_path="${MYSHELL}/public/_script/reloadsh.py"
 
     echo "检查 Python3"

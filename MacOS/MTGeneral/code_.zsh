@@ -2,7 +2,7 @@
 # 功能：根据配置文件快速在 VS Code 中打开项目
 # 依赖：$MYSHELL 环境变量指向 MyShell 根目录
 #       Python3 脚本位于 $MYSHELL/public/_script/vscode_open.py
-#       配置文件位于 $MYSHELL/config/path_code.json
+#       配置文件位于 $MYSHELL/config/private/path_code.json
 
 code_() {
     # 用途: vscode 打开指定文件
@@ -38,7 +38,7 @@ code_() {
 # ========== 补全配置 ==========
 # 补全函数：读取 path_code.json，生成“名称:描述”列表
 _code_completion() {
-    local json_file="${MYSHELL}/config/path_code.json"
+    local json_file="${MYSHELL}/config/private/path_code.json"
     local -a suggestions
 
     # 如果 JSON 文件不存在，直接返回

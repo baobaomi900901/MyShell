@@ -20,12 +20,12 @@ def get_config_path():
     """返回配置文件路径，优先使用环境变量 MYSHELL"""
     myshell = os.environ.get('MYSHELL')
     if myshell:
-        return Path(myshell) / "config" / "path.json"
+        return Path(myshell) / "config" / "private" /"path.json"
     # 兼容 Windows 旧路径（仅当 MYSHELL 未设置时）
     user_profile = os.environ.get('USERPROFILE', '')
     if not user_profile:
         user_profile = str(Path.home())
-    return Path(user_profile) / "Documents" / "WindowsPowerShell" / "MyShell" / "config" / "path.json"
+    return Path(user_profile) / "Documents" / "WindowsPowerShell" / "MyShell" / "config" / "private" / "path.json"
 
 def load_config(config_path):
     """加载并解析 JSON 配置文件"""

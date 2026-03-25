@@ -8,7 +8,7 @@ function pw_ {
         [string]$action
     )
 
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\password.json"
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\password.json"
     
     if (-not (Test-Path $configFile)) {
         Write-Host "Error: Password config file not found" -ForegroundColor Red
@@ -111,7 +111,7 @@ function pw_ {
 Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\password.json"
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\password.json"
     
     if (-not (Test-Path $configFile)) {
         return

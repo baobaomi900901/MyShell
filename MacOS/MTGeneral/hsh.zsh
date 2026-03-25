@@ -1,7 +1,7 @@
 # 定义 hsh 函数
 hsh() {
   # 用途: 查找内置方法的描述，并按文件分组显示（单函数文件不分组）
-  local json_file="${MYSHELL}/config/function_tracker.json"
+  local json_file="${MYSHELL}/config/private/function_tracker.json"
 
   # 检查文件是否存在
   if [[ ! -f "$json_file" ]]; then
