@@ -35,8 +35,25 @@ function reloadsh {
 
     # 如果退出码为 1，表示用户选择了 Yes 并希望关闭当前窗口
     if ($exitCode -eq 1) {
-        Write-Host "正在关闭当前窗口..."
-        Start-Sleep -Seconds 1  # 让用户看到最后的消息
-        [Environment]::Exit(0)  # 结束当前 PowerShell 进程，从而关闭窗口
+        # 调用 closeTerminal 函数（需要提前定义）
+        if (Get-Command closeTerminal -ErrorAction SilentlyContinue) {
+            closeTerminal -Seconds 3
+        } else {
+            Write-Host "正在关闭当前窗口..."
+            Start-Sleep -Seconds 1
+            [Environment]::Exit(0)
+        }
     }
+}
+
+function closeTerminal {
+    param(
+        [int]$Seconds = 3
+    )
+    Write-Host "即将关闭终端窗口..." -ForegroundColor Yellow
+    for ($i = $Seconds; $i -gt 0; $i--) {
+        Write-Host "  剩余 $i 秒" -ForegroundColor Cyan
+        Start-Sleep -Seconds 1
+    }
+    [Environment]::Exit(0) 
 }

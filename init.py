@@ -7,15 +7,15 @@ import sys
 import time
 from enum import Enum
 
+# ----------------------------------------------------------------------
+# 辅助函数
+# ----------------------------------------------------------------------
 def normalize_lines(text):
     """将文本按行分割，并去除每行的首尾空白"""
     return [line.strip() for line in text.splitlines()]
 
 def block_exists_in_file(file_content, block_content):
-    """
-    检查 block_content 是否以行序列的形式存在于 file_content 中
-    （忽略每行的首尾空白）
-    """
+    """检查 block_content 是否以行序列的形式存在于 file_content 中（忽略每行的首尾空白）"""
     file_lines = normalize_lines(file_content)
     block_lines = normalize_lines(block_content)
     len_block = len(block_lines)
@@ -25,7 +25,6 @@ def block_exists_in_file(file_content, block_content):
     return False
 
 class System(Enum):
-    """操作系统类型枚举"""
     WINDOWS = "Windows"
     MACOS = "MacOS"
     OTHER = "Other"
@@ -45,8 +44,10 @@ print(current_system.value)
 script_dir = os.path.dirname(os.path.abspath(__file__))
 config_json = os.path.join(script_dir, "config", "function_tracker.json")
 
+# ----------------------------------------------------------------------
+# Windows 分支
+# ----------------------------------------------------------------------
 if current_system == System.WINDOWS:
-    # ========== Windows 分支（按新需求实现） ==========
     import winreg
 
     # 1. 安装必要的 Python 库（questionary 和 keyboard）
@@ -70,8 +71,8 @@ if current_system == System.WINDOWS:
     expected_myshell = os.path.join(userprofile, "Documents", "WindowsPowerShell", "MyShell")
     print(f"期望的 MYSHELL 路径: {expected_myshell}")
 
-    # 定义读取用户环境变量的函数（从注册表）
     def get_user_environment_variable(name):
+        """从注册表读取用户环境变量"""
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
             value, _ = winreg.QueryValueEx(key, name)
@@ -84,7 +85,6 @@ if current_system == System.WINDOWS:
     env_var_name = "MYSHELL"
     current_reg_value = get_user_environment_variable(env_var_name)
 
-    # 比较当前值与期望值（标准化路径，忽略大小写和末尾反斜杠）
     def normalize_path(p):
         return os.path.normpath(p).lower()
 
@@ -101,7 +101,6 @@ if current_system == System.WINDOWS:
             print("环境变量 MYSHELL 已正确设置。")
 
     if need_update:
-        # 询问用户是否覆盖
         answer = questionary.confirm(
             f"当前 MYSHELL 值不是 {expected_myshell}，是否覆盖？"
         ).ask()
@@ -124,12 +123,10 @@ if current_system == System.WINDOWS:
             sys.exit(1)
 
     # 3. 处理 PowerShell 配置文件
-    # 构建 PowerShell 配置文件路径
     ps_folder = os.path.join(userprofile, "Documents", "WindowsPowerShell")
     profile_file = os.path.join(ps_folder, "Microsoft.PowerShell_profile.ps1")
     os.makedirs(ps_folder, exist_ok=True)
 
-    # 定义要检查的核心代码块（包含递归加载和 Import-Module PSReadLine）
     core_block = r"""$functionsDir = "$PSScriptRoot\MyShell\windows"
 if (Test-Path $functionsDir) {
     Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File | ForEach-Object {
@@ -138,24 +135,20 @@ if (Test-Path $functionsDir) {
 }
 Import-Module PSReadLine"""
 
-    # 读取现有内容（如果文件不存在则视为空）
     if os.path.exists(profile_file):
         with open(profile_file, 'r', encoding='utf-8-sig') as f:
             existing_content = f.read()
     else:
         existing_content = ""
 
-    # 检查代码块是否已存在
     if block_exists_in_file(existing_content, core_block):
         print("已在 Microsoft.PowerShell_profile.ps1 文件中写入 shell 递归循环。")
     else:
-        # 追加代码块（添加换行）
         with open(profile_file, 'a', encoding='utf-8-sig') as f:
             f.write("\n" + core_block + "\n")
         print("init 已帮你在 Microsoft.PowerShell_profile.ps1 文件中写入 shell 递归循环。")
 
     # 4. 判断 reloadsh 方法是否存在
-    # 在新 PowerShell 进程中加载配置文件并检查命令是否存在
     check_cmd = [
         "powershell", "-NoProfile", "-Command",
         f". '{profile_file}'; if (Get-Command reloadsh -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}"
@@ -167,23 +160,22 @@ Import-Module PSReadLine"""
     except subprocess.CalledProcessError:
         reloadsh_exists = False
         print("\033[93m未找到 reloadsh 命令，请先在终端执行 . $PROFILE\033[0m")
-        sys.exit(1)  # 终止进程，不继续执行后续
+        sys.exit(1)
 
-    # 5. 如果 reloadsh 存在，执行原有逻辑（自动打开新窗口并安装依赖）
-    # 创建自定义脚本目录（用于存放自定义函数）
-    myshell_windows = os.path.join(ps_folder, "MyShell", "windows")
-    os.makedirs(myshell_windows, exist_ok=True)
-    print(f"自定义脚本目录已确保存在: {myshell_windows}")
+    # 5. 如果 reloadsh 存在，先执行 reloadsh --no-restart（刷新函数列表）
+    print("正在执行 reloadsh --no-restart 以刷新函数列表...")
+    try:
+        # 不捕获输出，直接显示到控制台，避免编码问题
+        subprocess.run(
+            ["powershell", "-Command",
+             f". '{profile_file}'; reloadsh --no-restart"],
+            check=True  # 不设置 capture_output 和 text
+        )
+        print("reloadsh 执行完毕。")
+    except subprocess.CalledProcessError as e:
+        print(f"reloadsh 执行失败，退出码: {e.returncode}")
 
-    # 自动打开新窗口执行 . $PROFILE 和 reloadsh（并设置 UTF-8 编码）
-    print("正在新窗口中执行 . $PROFILE 和 reloadsh（已设置 UTF-8 编码）...")
-    subprocess.run(
-        ["start", "powershell", "-NoExit", "-Command",
-         "chcp 65001 > $null; $OutputEncoding = [console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING='utf-8'; . $PROFILE; reloadsh"],
-        shell=True
-    )
-
-    # 检查 config/function_tracker.json 并安装 Python 依赖
+    # 6. 安装 Python 依赖（从 function_tracker.json）
     if os.path.exists(config_json):
         print("找到 function_tracker.json，开始检查 Python 依赖...")
         try:
@@ -216,8 +208,51 @@ Import-Module PSReadLine"""
     else:
         print(f"未找到配置文件 {config_json}，跳过 Python 依赖安装。")
 
+    # 7. 通过模拟按键打开新终端（参考 reloadsh.py 的实现）
+    def send_combo(keys):
+        for key in keys:
+            keyboard.press(key)
+        time.sleep(0.05)
+        for key in reversed(keys):
+            keyboard.release(key)
+
+    def send_vscode_combo():
+        send_combo(['ctrl', 'shift', '`'])
+
+    def send_windows_combo():
+        send_combo(['ctrl', 'shift', 't'])
+
+    def detect_terminal():
+        if os.environ.get('TERM_PROGRAM') == 'vscode':
+            return "vscode"
+        else:
+            return "windows"
+
+    terminal_type = detect_terminal()
+    print(f"powershell 不支持热更新, 即将帮你打开新的终端窗口")
+    print(f"检测到当前终端窗口类型：{terminal_type}，正在打开新终端...")
+
+    # 倒计时 3 秒
+    def countdown(seconds):
+        for i in range(seconds, 0, -1):
+            print(f"  窗口将在 {i} 秒后打开...", flush=True)
+            time.sleep(1)
+
+    countdown(3)
+
+    if terminal_type == "vscode":
+        send_vscode_combo()
+        print("组合键 Ctrl+Shift+` 已发送，VS Code 将打开新终端。")
+    else:
+        send_windows_combo()
+        print("组合键 Ctrl+Shift+t 已发送，Windows 终端将恢复已关闭标签页。")
+
+    print("\033[91m请自行关闭当前终端窗口!\033[0m")
+
+# ----------------------------------------------------------------------
+# macOS 分支
+# ----------------------------------------------------------------------
 elif current_system == System.MACOS:
-    # ========== macOS 分支（保持之前的修改） ==========
     username = getpass.getuser()
     print(f"当前用户: {username}")
     home = os.path.expanduser("~")
@@ -247,7 +282,7 @@ elif current_system == System.MACOS:
     with open(profile_file, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # 2. 处理环境变量 MYSHELL
+    # 处理环境变量 MYSHELL
     env_line_pattern = "export MYSHELL="
     desired_env = 'export MYSHELL="$HOME/MyShell"'
     lines = content.splitlines()
@@ -259,7 +294,6 @@ elif current_system == System.MACOS:
             existing_env = line.strip()
             break
 
-    # 期望的绝对路径
     expected_abs = os.path.join(home, "MyShell")
 
     if env_index is not None:
@@ -317,50 +351,50 @@ zstyle ':completion:*' menu select=1"""
         # 存在，执行 reloadsh
         subprocess.run(["zsh", "-c", f"source {profile_file} && reloadsh"])
         print("已执行 reloadsh 命令。")
-
-        # 5. reloadsh 成功后，安装 pythonPackage 中的包
-        # 构建 config.json 路径：优先使用 MYSHELL 环境变量，若不存在则使用 ~/MyShell
-        myshell_env = os.environ.get('MYSHELL')
-        if myshell_env:
-            config_json_mac = os.path.join(myshell_env, "config", "function_tracker.json")
-        else:
-            config_json_mac = os.path.join(home, "MyShell", "config", "function_tracker.json")
-
-        if os.path.exists(config_json_mac):
-            print("找到 function_tracker.json，开始检查 Python 依赖...")
-            try:
-                with open(config_json_mac, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                packages = data.get('pythonPackage', [])
-                if packages:
-                    print(f"需要检查的包: {packages}")
-                    for pkg in packages:
-                        print(f"检查 {pkg}...")
-                        check_result = subprocess.run(
-                            [sys.executable, "-m", "pip", "show", pkg],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL
-                        )
-                        if check_result.returncode == 0:
-                            print(f"✅ {pkg} 已安装，跳过。")
-                            continue
-
-                        print(f"正在安装 {pkg}...")
-                        result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", pkg])
-                        if result.returncode == 0:
-                            print(f"✅ {pkg} 安装成功。")
-                        else:
-                            print(f"❌ {pkg} 安装失败，请手动执行: pip install {pkg}")
-                else:
-                    print("没有需要安装的 Python 包。")
-            except Exception as e:
-                print(f"安装 Python 包时出错: {e}")
-        else:
-            print(f"未找到配置文件 {config_json_mac}，跳过 Python 依赖安装。")
-
     except subprocess.CalledProcessError:
-        # 黄色提示，已去除句号
         print("\033[93m未找到 reloadsh 命令，请先在终端执行 source ~/.zshrc\033[0m")
-        
+
+    # 5. 安装 Python 依赖（从 function_tracker.json）
+    myshell_env = os.environ.get('MYSHELL')
+    if myshell_env:
+        config_json_mac = os.path.join(myshell_env, "config", "function_tracker.json")
+    else:
+        config_json_mac = os.path.join(home, "MyShell", "config", "function_tracker.json")
+
+    if os.path.exists(config_json_mac):
+        print("找到 function_tracker.json，开始检查 Python 依赖...")
+        try:
+            with open(config_json_mac, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            packages = data.get('pythonPackage', [])
+            if packages:
+                print(f"需要检查的包: {packages}")
+                for pkg in packages:
+                    print(f"检查 {pkg}...")
+                    check_result = subprocess.run(
+                        [sys.executable, "-m", "pip", "show", pkg],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                    if check_result.returncode == 0:
+                        print(f"✅ {pkg} 已安装，跳过。")
+                        continue
+
+                    print(f"正在安装 {pkg}...")
+                    result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", pkg])
+                    if result.returncode == 0:
+                        print(f"✅ {pkg} 安装成功。")
+                    else:
+                        print(f"❌ {pkg} 安装失败，请手动执行: pip install {pkg}")
+            else:
+                print("没有需要安装的 Python 包。")
+        except Exception as e:
+            print(f"安装 Python 包时出错: {e}")
+    else:
+        print(f"未找到配置文件 {config_json_mac}，跳过 Python 依赖安装。")
+
+# ----------------------------------------------------------------------
+# 其他操作系统分支
+# ----------------------------------------------------------------------
 else:
     print("其他操作系统，暂无自动配置。")

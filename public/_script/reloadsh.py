@@ -196,12 +196,6 @@ def send_windows_combo():
     """Ctrl+Shift+t （Windows 恢复已关闭标签页）"""
     send_combo(['ctrl', 'shift', 't'])
 
-def countdown(seconds):
-    """倒计时打印"""
-    for i in range(seconds, 0, -1):
-        print(f"窗口将在 {i} 秒后关闭...", flush=True)
-        time.sleep(1)
-
 # ----------------------------------------------------------------------
 # 主程序
 # ----------------------------------------------------------------------
@@ -211,6 +205,7 @@ def main():
     parser.add_argument('--json-file', required=True, help='Path to function_tracker.json')
     parser.add_argument('--system-type', required=True, choices=['windows', 'mac'], help='Type of system: windows or mac')
     parser.add_argument('--public-script-dir', required=False, help='Path to public script directory')
+    parser.add_argument('--no-restart', action='store_true', help='Skip restart prompt on Windows (do not reopen terminal)')
     args = parser.parse_args()
 
     system_dir = Path(args.system_dir)
@@ -357,6 +352,10 @@ def main():
     # 根据系统类型执行不同的后续操作
     # ------------------------------------------------------------------
     if system_type == 'windows':
+        # 如果指定了 --no-restart，直接退出，不询问
+        if args.no_restart:
+            print("已跳过终端重启询问（--no-restart 指定）。")
+            sys.exit(0)
         # Windows：询问是否重启终端
         answer = questionary.select(
             "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
@@ -369,7 +368,6 @@ def main():
 
         # 用户选择 Yes
         print("\n准备关闭当前窗口...")
-        countdown(3)  # 倒计时3秒
 
         # 检测终端类型并发送组合键
         terminal_type = detect_terminal()
