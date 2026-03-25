@@ -1,9 +1,5 @@
 MacOS/function_tracker.json
-function_tracker.json
-config/password.json
-config/game.json
-config/path.json
-config/path_code.json
+config/function_tracker.json
 temp/*
 test/*
 public/lite_setup/assets/*
