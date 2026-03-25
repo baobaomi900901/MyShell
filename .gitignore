@@ -1,5 +1,5 @@
 MacOS/function_tracker.json
-config/function_tracker.json
+config/*
 temp/*
 test/*
 public/lite_setup/assets/*
