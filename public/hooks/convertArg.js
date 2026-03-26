@@ -1,4 +1,4 @@
-// .\public\typeOf\convertArg.js
+// .\public\hooks\convertArg.js
 /**
  * 尝试将字符串转换为合适的 JavaScript 类型（保留 "true"/"false" 为字符串）
  * @param {string} value - 原始字符串参数

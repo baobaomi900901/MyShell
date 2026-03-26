@@ -15,11 +15,11 @@ else:
     sys.exit(1)
 
 tools_dir = project_root / "public"
-typeOf_dir = tools_dir / "typeOf"
+hooks_dir = tools_dir / "hooks"
 
-# 将 typeOf 目录加入 sys.path
-if str(typeOf_dir) not in sys.path:
-    sys.path.insert(0, str(typeOf_dir))
+# 将 hooks 目录加入 sys.path
+if str(hooks_dir) not in sys.path:
+    sys.path.insert(0, str(hooks_dir))
 
 try:
     from convert_arg import convert_arg
