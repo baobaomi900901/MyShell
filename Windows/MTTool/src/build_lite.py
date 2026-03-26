@@ -29,6 +29,7 @@ import urllib.request
 import configparser
 import re
 import ctypes
+import json                     # 新增：用于解析 JSON
 from datetime import datetime
 from pathlib import Path
 import questionary
@@ -37,7 +38,8 @@ import questionary
 AOM_PATH = r"D:\Code\aom"
 BUILD_EXE = r"D:\Code\aom\KingAutomate\Build\Build\Build.exe"
 WEB_DIR = r"D:\Code\aom\KingAutomate\web"
-VERSION_INI_URL = "http://k-rpa-lite.kingsware.cn:50351/krpalite/package/LiteVersion.ini"
+# 【修改点1】将原 ini 文件地址改为新的 JSON API 地址
+VERSION_API_URL = "http://192.168.104.153:8765/v1/update/windows/latest"
 
 
 def run_command(cmd, cwd=None, check=True, encoding='gbk', timeout=None):
@@ -142,33 +144,26 @@ def get_git_info():
         return "unknown", "unknown"
 
 
+# 【修改点2】函数完全重写，改为从 JSON API 读取 version 字段
 def fetch_newversion_from_url(url):
     """
-    从指定 URL 下载 LiteVersion.ini，解析出 newversion 的值
-    返回 newversion 字符串，失败返回 None
+    从指定 JSON API 获取 version 字段的值
+    返回 version 字符串，失败返回 None
     """
     print(f"正在从远程获取版本信息: {url}")
     try:
         response = urllib.request.urlopen(url, timeout=10)
-        content = response.read()
-        # 尝试多种编码解析
-        for enc in ['utf-8', 'gbk', 'gb2312']:
-            try:
-                decoded = content.decode(enc)
-                break
-            except UnicodeDecodeError:
-                continue
+        # 直接按 utf-8 解析 JSON（标准 JSON 使用 utf-8）
+        data = json.loads(response.read().decode('utf-8'))
+        version = data.get('version')
+        if version:
+            return version.strip()
         else:
-            decoded = content.decode('utf-8', errors='ignore')
-
-        config = configparser.ConfigParser()
-        config.read_string(decoded)
-        newversion = config.get('Main', 'newversion', fallback=None)
-        if newversion:
-            return newversion.strip()
-        else:
-            print("未找到 [Main] 下的 newversion 字段")
+            print("JSON 响应中未找到 version 字段")
             return None
+    except json.JSONDecodeError as e:
+        print(f"JSON 解析失败: {e}")
+        return None
     except Exception as e:
         print(f"获取或解析远程版本失败: {e}")
         return None
@@ -459,7 +454,8 @@ def main():
         print("=" * 40)
         version_number = timestamp  # 测试版不需要更新 dproj
     else:  # 正式发版
-        remote_version = fetch_newversion_from_url(VERSION_INI_URL)
+        # 【修改点3】使用新的 API 地址获取版本
+        remote_version = fetch_newversion_from_url(VERSION_API_URL)
         if remote_version:
             incremented_version = increment_version(remote_version)
             print(f"原始版本: {remote_version}，递增后: {incremented_version}")
