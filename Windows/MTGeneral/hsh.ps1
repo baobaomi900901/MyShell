@@ -14,7 +14,7 @@
         return
     }
 
-    $jsonPath = Join-Path $env:myshell "config\function_tracker.json"
+    $jsonPath = Join-Path $env:myshell "config\private\function_tracker.json"
     
     if (-not (Test-Path $jsonPath)) {
         Write-Error "找不到 function_tracker.json，预期路径：$jsonPath"
