@@ -46,6 +46,7 @@ def show_help(config):
     names = [key.replace('_', '-') for key, val in config.items() if val.get('win') or val.get('mac')]
     max_len = max(len(name) for name in names) if names else 0
 
+    print()
     for key, val in config.items():
         if val.get('win') or val.get('mac'):
             display_name = key.replace('_', '-')
