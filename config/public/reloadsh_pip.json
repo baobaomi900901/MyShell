@@ -1,0 +1,6 @@
+{
+  "pip_aliases": {
+    "pywin32": ["win32gui", "win32api", "win32con", "win32file", "win32process", "win32com"]
+  },
+  "pip_ignore": ["convert_arg"]
+}

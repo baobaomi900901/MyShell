@@ -181,7 +181,7 @@ Import-Module PSReadLine"""
         try:
             with open(config_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            packages = data.get('pythonPackage', [])
+            packages = data.get('pip_package', [])
             if packages:
                 print(f"需要检查的包: {packages}")
                 for pkg in packages:
@@ -366,7 +366,7 @@ zstyle ':completion:*' menu select=1"""
         try:
             with open(config_json_mac, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            packages = data.get('pythonPackage', [])
+            packages = data.get('pip_package', [])
             if packages:
                 print(f"需要检查的包: {packages}")
                 for pkg in packages:
