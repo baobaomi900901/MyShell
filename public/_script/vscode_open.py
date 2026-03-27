@@ -50,7 +50,7 @@ def show_help(config):
         if val.get('win') or val.get('mac'):
             display_name = key.replace('_', '-')
             desc = val.get('description', '')
-            lines.append(f"  {YELLOW}{display_name:<{max_len}}{RESET} - {desc}")
+            lines.append(f"  {YELLOW}{display_name:<{max_len}}{RESET} # {desc}")
     return "\n".join(lines)
 
 def main():
