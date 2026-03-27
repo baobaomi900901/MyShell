@@ -8,9 +8,15 @@ import re
 import argparse
 import ast
 import sys
-import questionary
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional, Any
+
+try:
+    import questionary
+except ImportError:
+    print("缺少 questionary 模块，请执行 pip install questionary")
+    sys.exit(10)
+
 
 try:
     import keyboard
