@@ -303,15 +303,22 @@ def update_dproj_version(new_version):
         return False
 
 
-def run_build_exe():
+def run_build_exe(version_string=None):
     """
     直接运行 Build.exe，将终端交还给用户手动交互。
     运行前临时将控制台代码页设为 GBK (936) 以解决中文乱码，运行后恢复。
     工作目录设为 AOM_PATH（与 PowerShell 脚本一致），不捕获输出，不自动输入。
+    如果提供了 version_string，则将其作为命令行参数传递给 Build.exe。
     """
     if not os.path.exists(BUILD_EXE):
         print(f"错误: 找不到 Build.exe，路径: {BUILD_EXE}")
         return False
+
+    # 构建命令列表
+    cmd = [BUILD_EXE]
+    if version_string:
+        cmd.append(version_string)
+        print(f"将传递版本参数: {version_string}")
 
     print("正在运行 Build.exe...")
     print("（终端已交给 Build.exe，请手动完成交互，完成后脚本将继续）")
@@ -328,7 +335,7 @@ def run_build_exe():
         print(f"警告: 无法设置控制台代码页，输出可能仍为乱码: {e}")
 
     try:
-        result = subprocess.run([BUILD_EXE], cwd=work_dir)
+        result = subprocess.run(cmd, cwd=work_dir)
     finally:
         # 恢复原代码页
         if old_cp is not None:
@@ -448,11 +455,11 @@ def main():
 
     if build_type == "测试":
         version_string = f"{timestamp}|{branch}_#_{commit_hash}"
+        version_number = timestamp  # 测试版不需要更新 dproj
         print("\n" + "=" * 40)
         print("生成的版本标识符（测试）:")
         print(version_string)
         print("=" * 40)
-        version_number = timestamp  # 测试版不需要更新 dproj
     else:  # 正式发版
         # 【修改点3】使用新的 API 地址获取版本
         remote_version = fetch_newversion_from_url(VERSION_API_URL)
@@ -510,16 +517,7 @@ def main():
                 version_string = f"{timestamp}|{branch}_#_{commit_hash}"
             print(f"使用版本号: {version_string}")
 
-    # 统一复制版本标识符到剪贴板（测试和正式均执行）
-    try:
-        import pyperclip
-        pyperclip.copy(version_string)
-        print("✅ 版本标识符已复制到剪贴板，可直接粘贴。")
-    except ImportError:
-        print("⚠️ 未安装 pyperclip，无法自动复制。请手动复制上面的版本标识符。")
-        print("   安装命令: pip install pyperclip")
-    except Exception as e:
-        print(f"⚠️ 复制到剪贴板失败: {e}")
+    # 移除剪贴板复制功能（用户要求不再复制）
 
     # 如果是正式版，还需要更新 dproj 文件
     if build_type == "正式发版":
@@ -528,13 +526,15 @@ def main():
             print("错误: 更新 dproj 文件失败，终止构建。")
             return 1
 
-    # 8. 运行 Build.exe，完全交给用户交互（步骤编号根据正式版调整）
+    # 8. 运行 Build.exe，根据构建类型传递不同参数
     if build_type == "测试":
         print("\n[6/7] 运行 Build.exe...")
+        param_to_pass = version_string   # 完整标识符
     else:
         print("\n[7/7] 运行 Build.exe...")
+        param_to_pass = version_string   # 修改为完整标识符
 
-    build_success = run_build_exe()
+    build_success = run_build_exe(param_to_pass)
 
     # 如果构建成功且用户选择了打包，则运行打包脚本（继承终端以实现交互）
     if build_success and need_pack:
