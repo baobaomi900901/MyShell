@@ -11,9 +11,10 @@ function game_ {
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
-        Write-Host "Error: Config file not found" -ForegroundColor Red
-        Write-Host "Please create: $configFile" -ForegroundColor Yellow
-        Write-Host "Example content:" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "❌ 配置文件不存在" -ForegroundColor Red
+        Write-Host "请手动创建: $configFile" -ForegroundColor Yellow
+        Write-Host "示例模板:" -ForegroundColor Cyan
         Write-Host @'
 {
   "ark_backup": {
@@ -22,7 +23,8 @@ function game_ {
     "description": "ark single player save"
   }
 }
-'@
+'@ -ForegroundColor DarkGray
+        Write-Host ""
         return
     }
     

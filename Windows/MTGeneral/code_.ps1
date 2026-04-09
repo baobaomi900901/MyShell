@@ -13,6 +13,24 @@ function code_ {
         return
     }
 
+    $configFile = Join-Path $env:MYSHELL "config\private\path_code.json"
+    if (-not (Test-Path $configFile)) {
+        Write-Host ""
+        Write-Host "❌ 配置文件不存在: $configFile" -ForegroundColor Red
+        Write-Host "请手动创建该文件，模板如下：" -ForegroundColor Yellow
+        Write-Host @'
+{
+  "ShIndex": {
+    "win": "C:\\Users\\mobytang\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1",
+    "mac": "/Users/mobytang/.zshrc",
+    "description": "打开 sh 入口文件"
+  },
+}
+'@ -ForegroundColor DarkGray
+        Write-Host ""
+        return
+    }
+
     # 调用 Python 脚本，合并输出
     $output = & python "$script" $name 2>&1
     $exitCode = $LASTEXITCODE

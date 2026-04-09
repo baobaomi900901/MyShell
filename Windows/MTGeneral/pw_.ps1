@@ -7,14 +7,21 @@ function pw_ {
         [Parameter(Position = 0)]
         [string]$action
     )
-
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\password.json"
     
+    $configFile = Join-Path $env:MYSHELL "config\private\password.json"
     if (-not (Test-Path $configFile)) {
-        Write-Host "Error: Password config file not found" -ForegroundColor Red
-        Write-Host "Please create: $configFile" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "Example config file content:" -ForegroundColor Cyan
+        Write-Host "❌ 配置文件不存在: $configFile" -ForegroundColor Red
+        Write-Host "请手动创建该文件，模板如下：" -ForegroundColor Yellow
+        Write-Host @'
+{
+  "lite-root": {
+    "password": "12345678",
+    "description": "lite 服务器 root 密码"
+  },
+}
+'@ -ForegroundColor DarkGray
+        Write-Host ""
         return
     }
     
