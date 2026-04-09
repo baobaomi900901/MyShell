@@ -5,3 +5,5 @@ test/*
 public/lite_setup/assets/*
 public/lite_setup/plugin/*
 *.pyc
+
+*/demo/*

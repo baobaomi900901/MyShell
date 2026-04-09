@@ -75,7 +75,7 @@ MyShell
 ├── assets                        # markdown 图片资源
 ├── config                        # 配置文件
 │   ├── private                   # 私有配置, 影响cd_ code_ pw_, 格式参考 Template
-│   └──public                     # 公共配置, 影响所有脚本
+│   └── public                     # 公共配置, 影响所有脚本
 ├── Templates                     # private 配置模板
 ├── MacOS                         # mac 脚本
 ├── public                        # 公共脚本
