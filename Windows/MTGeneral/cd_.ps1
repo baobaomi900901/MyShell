@@ -11,25 +11,7 @@
         Write-Host "❌ 环境变量 MYSHELL 未设置，无法定位 Python 脚本" -ForegroundColor Red
         return
     }
-
-    $configFile = Join-Path $env:MYSHELL "config\private\path.json"
-    if (-not (Test-Path $configFile)) {
-        Write-Host ""
-        Write-Host "❌ 配置文件不存在: $configFile" -ForegroundColor Red
-        Write-Host "请手动创建该文件，模板如下：" -ForegroundColor Yellow
-        Write-Host @'
-{
-  "MyShell": {
-    "win": "C:\\Users\\mobytang\\Documents\\WindowsPowerShell\\MyShell",
-    "mac": "/Users/mobytang/MyShell",
-    "description": "MyShell 配置目录"
-  },
-}
-'@ -ForegroundColor DarkGray
-        Write-Host ""
-        return
-    }
-
+    
     # 构建脚本路径：$myshell\public\_script\cd.py
     $scriptPath = Join-Path $myshell "public"
     $scriptPath = Join-Path $scriptPath "_script"

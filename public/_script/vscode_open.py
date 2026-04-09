@@ -12,9 +12,15 @@ import json
 import platform
 from pathlib import Path
 
-# ANSI 颜色（终端支持）
+# ANSI 颜色代码（macOS / Linux 终端支持）
 YELLOW = '\033[93m'
+RED = '\033[91m'
+GRAY = '\033[90m'
 RESET = '\033[0m'
+
+# Windows 经典终端且不是 Windows Terminal 时禁用颜色
+if os.name == 'nt' and 'WT_SESSION' not in os.environ:
+    YELLOW = RED = GRAY = RESET = ''
 
 def get_config_path():
     """返回配置文件（path_code.json）路径"""
@@ -39,14 +45,28 @@ def load_config(config_path):
         print(f"❌ 读取配置文件失败: {e}", file=sys.stderr)
         return None
 
+def print_missing_config(config_path):
+    """打印配置文件缺失的友好提示，包含 JSON 模板"""
+    print(f"\n{RED}❌ 配置文件不存在: {config_path}{RESET}")
+    print(f"{YELLOW}请手动创建该文件，模板如下：{RESET}")
+
+    # 构建示例配置（包含 ShIndex 条目和通用项目条目）
+    example_config = {
+        "ShIndex": {
+            "win": r"C:\Users\YourUsername\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1",
+            "mac": "/Users/YourUsername/.zshrc",
+            "description": "打开 sh 入口文件"
+        }
+    }
+    template = json.dumps(example_config, indent=2, ensure_ascii=False)
+    print(f"{GRAY}{template}{RESET}\n")
+
 def show_help(config):
     """打印彩色帮助信息"""
     lines = ["VS Code 快速打开", "用法: code_ <名称>", "", "可用项目:"]
-    # 显示所有至少在一个系统上有路径的条目
     names = [key.replace('_', '-') for key, val in config.items() if val.get('win') or val.get('mac')]
     max_len = max(len(name) for name in names) if names else 0
 
-    print()
     for key, val in config.items():
         if val.get('win') or val.get('mac'):
             display_name = key.replace('_', '-')
@@ -59,7 +79,7 @@ def main():
     if len(sys.argv) < 2 or not sys.argv[1]:
         config_path = get_config_path()
         if not config_path.exists():
-            print(f"❌ 配置文件不存在\n请手动创建: {config_path}", file=sys.stderr)
+            print_missing_config(config_path)
             sys.exit(1)
         config = load_config(config_path)
         if config is None:
@@ -72,7 +92,7 @@ def main():
 
     config_path = get_config_path()
     if not config_path.exists():
-        print(f"❌ 配置文件不存在\n请手动创建: {config_path}", file=sys.stderr)
+        print_missing_config(config_path)
         sys.exit(1)
 
     config = load_config(config_path)

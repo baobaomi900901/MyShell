@@ -7,8 +7,6 @@ cd.py - 通用目录跳转脚本
 """
 
 import os
-if os.name == 'nt' and 'WT_SESSION' not in os.environ:
-    YELLOW = RESET = ''   # Windows 经典终端且不是 Windows Terminal 时禁用颜色
 import sys
 import json
 import platform
@@ -17,7 +15,13 @@ import subprocess
 
 # ANSI 颜色代码（macOS 终端同样支持）
 YELLOW = '\033[93m'
+RED = '\033[91m'
+GRAY = '\033[90m'
 RESET = '\033[0m'
+
+# Windows 经典终端且不是 Windows Terminal 时禁用颜色
+if os.name == 'nt' and 'WT_SESSION' not in os.environ:
+    YELLOW = RED = GRAY = RESET = ''
 
 def setup_utf8_console():
     if platform.system() != "Windows":
@@ -38,7 +42,7 @@ def get_config_path():
     """返回配置文件路径，优先使用环境变量 MYSHELL"""
     myshell = os.environ.get('MYSHELL')
     if myshell:
-        return Path(myshell) / "config" / "private" /"path.json"
+        return Path(myshell) / "config" / "private" / "path.json"
     # 兼容 Windows 旧路径（仅当 MYSHELL 未设置时）
     user_profile = os.environ.get('USERPROFILE', '')
     if not user_profile:
@@ -57,6 +61,22 @@ def load_config(config_path):
         print(f"❌ 读取配置文件失败: {e}", file=sys.stderr)
         return None
 
+def print_missing_config(config_path):
+    """打印配置文件缺失的友好提示，包含 JSON 模板"""
+    print(f"\n{RED}❌ 配置文件不存在: {config_path}{RESET}")
+    print(f"{YELLOW}请手动创建该文件，模板如下：{RESET}")
+
+    # 构建示例配置
+    example_config = {
+        "MyShell": {
+            "win": r"C:\Users\YourUsername\Documents\WindowsPowerShell\MyShell",
+            "mac": "/Users/YourUsername/MyShell",
+            "description": "MyShell 配置目录"
+        }
+    }
+    template = json.dumps(example_config, indent=2, ensure_ascii=False)
+    print(f"{GRAY}{template}{RESET}\n")
+
 def show_help(config):
     """打印彩色帮助信息"""
     lines = ["快速目录跳转", "用法: cd_ <名称>", "", "可用目录:"]
@@ -72,11 +92,12 @@ def show_help(config):
 
 def main():
     setup_utf8_console()
+    config_path = get_config_path()
+
     # 无参数或空参数 -> 显示帮助
     if len(sys.argv) < 2 or not sys.argv[1]:
-        config_path = get_config_path()
         if not config_path.exists():
-            print(f"❌ 配置文件不存在\n请手动创建: {config_path}")
+            print_missing_config(config_path)
             sys.exit(1)
         config = load_config(config_path)
         if config is None:
@@ -87,9 +108,8 @@ def main():
     action = sys.argv[1]
     internal_action = action.replace('-', '_')
 
-    config_path = get_config_path()
     if not config_path.exists():
-        print(f"❌ 配置文件不存在\n请手动创建: {config_path}")
+        print_missing_config(config_path)
         sys.exit(1)
 
     config = load_config(config_path)
