@@ -1,5 +1,5 @@
 ﻿# .\Windows\MTGame\index.ps1
-# 游戏存档备份管理函数
+# 游戏存档备份管理函数（支持 UTF-8 配置文件）
 
 function game_ {
     # 用途: 游戏存档备份管理工具
@@ -7,6 +7,14 @@ function game_ {
         [Parameter(Position = 0)]
         [string]$action
     )
+
+    # ---------- 编码设置：确保控制台能显示 UTF-8 中文 ----------
+    try {
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        $null = & chcp 65001 2>$null
+    } catch {
+        # 静默处理，避免干扰
+    }
 
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
@@ -28,20 +36,21 @@ function game_ {
         return
     }
     
-    # 读取配置
+    # 读取配置（指定 UTF-8 编码）
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
     } catch {
-        Write-Host "Error: Config file format error" -ForegroundColor Red
+        Write-Host "错误: 配置文件格式错误，请确保文件为 UTF-8 无 BOM 格式" -ForegroundColor Red
         return
     }
     
     # 显示帮助
     if (-not $action) {
-        Write-Host "Game Save Backup Tool" -ForegroundColor Cyan
-        Write-Host "Usage: game_ <game_name>" -ForegroundColor Yellow
+        Write-Host "游戏存档备份工具" -ForegroundColor Cyan
+        Write-Host "用法: game_ <游戏名称>" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "Available games:" -ForegroundColor Green
+        Write-Host "可用游戏:" -ForegroundColor Green
         
         $config.PSObject.Properties | ForEach-Object {
             $key = $_.Name
@@ -52,8 +61,8 @@ function game_ {
             }
         }
         Write-Host ""
-        Write-Host "Example:" -ForegroundColor Cyan
-        Write-Host "  game_ ark_backup      # Backup ARK game save" -ForegroundColor Yellow
+        Write-Host "示例:" -ForegroundColor Cyan
+        Write-Host "  game_ ark_backup      # 备份 ARK 游戏存档" -ForegroundColor Yellow
         return
     }
     
@@ -61,7 +70,7 @@ function game_ {
     $internalAction = $action
     
     if (-not $config.$internalAction) {
-        Write-Host "Error: Game '$action' not configured" -ForegroundColor Red
+        Write-Host "错误: 游戏 '$action' 未配置" -ForegroundColor Red
         return
     }
     
@@ -69,7 +78,7 @@ function game_ {
     $sourcePath = $item.win
     
     if (-not $sourcePath -or $null -eq $sourcePath) {
-        Write-Host "Error: Game '$action' not configured for Windows" -ForegroundColor Red
+        Write-Host "错误: 游戏 '$action' 在 Windows 上未配置路径" -ForegroundColor Red
         return
     }
     
@@ -84,9 +93,9 @@ function game_ {
         $backupName = "${folderName}_$timestamp"
         $backupPath = Join-Path $parentDir $backupName
         
-        Write-Host "Backing up $($item.description)..." -ForegroundColor Green
-        Write-Host "Source: $sourcePath" -ForegroundColor Cyan
-        Write-Host "Backup to: $backupPath" -ForegroundColor Cyan
+        Write-Host "正在备份 $($item.description) ..." -ForegroundColor Green
+        Write-Host "源目录: $sourcePath" -ForegroundColor Cyan
+        Write-Host "备份到: $backupPath" -ForegroundColor Cyan
         
         try {
             # 复制整个目录
@@ -96,19 +105,19 @@ function game_ {
             $size = (Get-ChildItem -Path $backupPath -Recurse | Measure-Object -Property Length -Sum).Sum
             $sizeMB = [math]::Round($size / 1MB, 2)
             
-            Write-Host "✓ Backup completed!" -ForegroundColor Green
-            Write-Host "Backup name: $backupName" -ForegroundColor Yellow
-            Write-Host "Backup size: $sizeMB MB" -ForegroundColor Yellow
-            Write-Host "Backup time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
+            Write-Host "✓ 备份完成！" -ForegroundColor Green
+            Write-Host "备份名称: $backupName" -ForegroundColor Yellow
+            Write-Host "备份大小: $sizeMB MB" -ForegroundColor Yellow
+            Write-Host "备份时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
             
-            # 显示备份列表
-            Write-Host "`nRecent backups:" -ForegroundColor Cyan
+            # 显示最近的备份列表
+            Write-Host "`n最近的备份:" -ForegroundColor Cyan
             $backups = Get-ChildItem -Path $parentDir -Directory | Where-Object { 
                 $_.Name -like "${folderName}_*" 
             } | Sort-Object CreationTime -Descending | Select-Object -First 5
             
             if ($backups.Count -eq 0) {
-                Write-Host "  No backups" -ForegroundColor Gray
+                Write-Host "  (无备份)" -ForegroundColor Gray
             } else {
                 $backups | ForEach-Object {
                     $size = (Get-ChildItem $_.FullName -Recurse | Measure-Object Length -Sum).Sum
@@ -121,57 +130,58 @@ function game_ {
             }
             
         } catch {
-            Write-Host "Backup failed: $_" -ForegroundColor Red
+            Write-Host "备份失败: $_" -ForegroundColor Red
         }
     } else {
-        Write-Host "Error: Directory not found - $sourcePath" -ForegroundColor Red
+        Write-Host "错误: 目录不存在 - $sourcePath" -ForegroundColor Red
     }
 }
 
-# Tab 补全功能
+# Tab 补全功能（同样使用 UTF-8 读取配置）
 Register-ArgumentCompleter -CommandName game_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\game.json"
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
         return
     }
     
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
         
-        # 获取所有可用的游戏配置
         $completionItems = $config.PSObject.Properties | Where-Object {
             $_.Value.win -and $_.Value.win -ne $null
         } | ForEach-Object {
             $key = $_.Name
             $description = $_.Value.description
             
-            # 创建补全项
             [System.Management.Automation.CompletionResult]::new(
-                $key,                    # 补全文本
-                $key,                    # 列表文本
-                'ParameterValue',        # 结果类型
-                $description             # 工具提示
+                $key,
+                $key,
+                'ParameterValue',
+                $description
             )
         }
         
-        # 根据当前输入过滤补全项
         $completionItems | Where-Object {
             $_.CompletionText -like "$wordToComplete*"
         }
         
     } catch {
-        # 如果解析失败，返回空结果
         return
     }
 }
 
-# 简单的编辑命令
+# 简单的编辑命令（用 VS Code 打开配置文件）
 function edit-game-config {
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\game.json"
-    code $configFile
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    if (Get-Command code -ErrorAction SilentlyContinue) {
+        code $configFile
+    } else {
+        notepad $configFile
+    }
 }
 
 # 查看游戏备份列表
@@ -180,18 +190,22 @@ function game_list_backups {
         [string]$game = "ark_backup"
     )
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\game.json"
+    # 编码设置
+    try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $null = & chcp 65001 2>$null } catch {}
+    
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
-        Write-Host "Config file not found" -ForegroundColor Red
+        Write-Host "配置文件不存在" -ForegroundColor Red
         return
     }
     
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
         
         if (-not $config.$game) {
-            Write-Host "Game '$game' not configured" -ForegroundColor Red
+            Write-Host "游戏 '$game' 未配置" -ForegroundColor Red
             return
         }
         
@@ -199,22 +213,22 @@ function game_list_backups {
         $sourcePath = $item.win
         
         if (-not $sourcePath) {
-            Write-Host "Game '$game' not configured for Windows" -ForegroundColor Red
+            Write-Host "游戏 '$game' 在 Windows 上未配置路径" -ForegroundColor Red
             return
         }
         
         $parentDir = Split-Path $sourcePath -Parent
         $folderName = Split-Path $sourcePath -Leaf
         
-        Write-Host "$($item.description) backup list:" -ForegroundColor Cyan
-        Write-Host "=" * 50
+        Write-Host "$($item.description) 备份列表:" -ForegroundColor Cyan
+        Write-Host ("=" * 50)
         
         $backups = Get-ChildItem -Path $parentDir -Directory | Where-Object { 
             $_.Name -like "${folderName}_*" 
         } | Sort-Object CreationTime -Descending
         
         if ($backups.Count -eq 0) {
-            Write-Host "No backups found" -ForegroundColor Gray
+            Write-Host "未找到任何备份" -ForegroundColor Gray
             return
         }
         
@@ -224,14 +238,14 @@ function game_list_backups {
             $time = $_.CreationTime.ToString("yyyy-MM-dd HH:mm")
             
             Write-Host "  $($_.Name)" -ForegroundColor Yellow
-            Write-Host "    Size: $sizeMB MB" -ForegroundColor Gray
-            Write-Host "    Time: $time" -ForegroundColor Gray
-            Write-Host "    Path: $($_.FullName)" -ForegroundColor DarkGray
+            Write-Host "    大小: $sizeMB MB" -ForegroundColor Gray
+            Write-Host "    时间: $time" -ForegroundColor Gray
+            Write-Host "    路径: $($_.FullName)" -ForegroundColor DarkGray
             Write-Host ""
         }
         
     } catch {
-        Write-Host "Error reading config: $_" -ForegroundColor Red
+        Write-Host "读取配置失败: $_" -ForegroundColor Red
     }
 }
 
@@ -242,18 +256,22 @@ function game_restore {
         [string]$backupName
     )
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\game.json"
+    # 编码设置
+    try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $null = & chcp 65001 2>$null } catch {}
+    
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
-        Write-Host "Config file not found" -ForegroundColor Red
+        Write-Host "配置文件不存在" -ForegroundColor Red
         return
     }
     
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
         
         if (-not $config.$game) {
-            Write-Host "Game '$game' not configured" -ForegroundColor Red
+            Write-Host "游戏 '$game' 未配置" -ForegroundColor Red
             return
         }
         
@@ -261,7 +279,7 @@ function game_restore {
         $sourcePath = $item.win
         
         if (-not $sourcePath) {
-            Write-Host "Game '$game' not configured for Windows" -ForegroundColor Red
+            Write-Host "游戏 '$game' 在 Windows 上未配置路径" -ForegroundColor Red
             return
         }
         
@@ -270,14 +288,14 @@ function game_restore {
         
         # 如果没有指定备份名称，显示列表让用户选择
         if (-not $backupName) {
-            Write-Host "Select a backup to restore:" -ForegroundColor Green
+            Write-Host "请选择要还原的备份:" -ForegroundColor Green
             
             $backups = Get-ChildItem -Path $parentDir -Directory | Where-Object { 
                 $_.Name -like "${folderName}_*" 
             } | Sort-Object CreationTime -Descending
             
             if ($backups.Count -eq 0) {
-                Write-Host "Error: No backups found" -ForegroundColor Red
+                Write-Host "错误: 未找到任何备份" -ForegroundColor Red
                 return
             }
             
@@ -288,12 +306,12 @@ function game_restore {
             }
             
             # 用户选择
-            $choice = Read-Host "`nEnter backup number (0-$($backups.Count-1))"
+            $choice = Read-Host "`n输入备份编号 (0-$($backups.Count-1))"
             
             if ($choice -match "^\d+$" -and [int]$choice -lt $backups.Count) {
                 $backupName = $backups[[int]$choice].Name
             } else {
-                Write-Host "Invalid input, restore cancelled" -ForegroundColor Red
+                Write-Host "输入无效，还原已取消" -ForegroundColor Red
                 return
             }
         }
@@ -301,15 +319,15 @@ function game_restore {
         $backupPath = Join-Path $parentDir $backupName
         
         if (-not (Test-Path $backupPath)) {
-            Write-Host "Error: Backup not found - $backupPath" -ForegroundColor Red
+            Write-Host "错误: 备份不存在 - $backupPath" -ForegroundColor Red
             return
         }
         
         # 确认操作
-        $confirm = Read-Host "Confirm restore to $backupName? This will overwrite current save. (Enter y to confirm)"
+        $confirm = Read-Host "确认还原到 $backupName ？这将覆盖当前存档。 (输入 y 确认)"
         
         if ($confirm -ne "y") {
-            Write-Host "Restore cancelled" -ForegroundColor Yellow
+            Write-Host "还原已取消" -ForegroundColor Yellow
             return
         }
         
@@ -319,7 +337,7 @@ function game_restore {
         
         if (Test-Path $sourcePath) {
             Copy-Item -Path $sourcePath -Destination $currentBackup -Recurse -Force
-            Write-Host "Current save backed up to: $currentBackup" -ForegroundColor Cyan
+            Write-Host "当前存档已备份到: $currentBackup" -ForegroundColor Cyan
         }
         
         # 删除原存档
@@ -328,9 +346,9 @@ function game_restore {
         # 还原备份
         Copy-Item -Path $backupPath -Destination $sourcePath -Recurse -Force
         
-        Write-Host "✓ Restore completed!" -ForegroundColor Green
+        Write-Host "✓ 还原完成！" -ForegroundColor Green
         
     } catch {
-        Write-Host "Restore failed: $_" -ForegroundColor Red
+        Write-Host "还原失败: $_" -ForegroundColor Red
     }
 }

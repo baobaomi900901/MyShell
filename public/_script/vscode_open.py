@@ -63,7 +63,7 @@ def print_missing_config(config_path):
 
 def show_help(config):
     """打印彩色帮助信息"""
-    lines = ["VS Code 快速打开", "用法: code_ <名称>", "", "可用项目:"]
+    lines = ["","VS Code 快速打开", "用法: code_ <名称>", "", "可用项目:"]
     names = [key.replace('_', '-') for key, val in config.items() if val.get('win') or val.get('mac')]
     max_len = max(len(name) for name in names) if names else 0
 

@@ -1,41 +1,73 @@
 ﻿# .\Windows\MTPW\index.ps1
-# 查询 密码 到剪切板
+# 查询密码到剪切板（无乱码版）
 
 function pw_ {
-    # 用途: 快速查找密码
+    <#
+    .SYNOPSIS
+    快速查找并复制密码到剪贴板
+    .DESCRIPTION
+    从 JSON 配置文件中读取密码项，支持 Tab 补全。
+    .PARAMETER action
+    密码项的名称（如 lite-root）
+    .EXAMPLE
+    pw_ lite-root
+    复制 lite-root 的密码到剪贴板
+    #>
     param (
         [Parameter(Position = 0)]
         [string]$action
     )
     
+    # ---------- 编码修复：确保控制台使用 UTF-8 ----------
+    # 仅在 Windows 旧终端下尝试设置代码页为 UTF-8
+    if ($env:WT_SESSION -eq $null) {
+        try {
+            # 设置输出编码为 UTF-8
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $null = & chcp 65001 2>$null
+        } catch {
+            # 忽略错误（某些环境可能不允许修改）
+        }
+    }
+    
+    # 定义安全输出函数（避免乱码）
+    function Write-SafeHost($message, $color = $null) {
+        if ($color) {
+            Write-Host $message -ForegroundColor $color
+        } else {
+            Write-Host $message
+        }
+    }
+    
     $configFile = Join-Path $env:MYSHELL "config\private\password.json"
     if (-not (Test-Path $configFile)) {
-        Write-Host ""
-        Write-Host "❌ 配置文件不存在: $configFile" -ForegroundColor Red
-        Write-Host "请手动创建该文件，模板如下：" -ForegroundColor Yellow
-        Write-Host @'
+        Write-SafeHost "" 
+        Write-SafeHost "❌ 配置文件不存在: $configFile" -color Red
+        Write-SafeHost "请手动创建该文件，模板如下：" -color Yellow
+        Write-SafeHost @'
 {
   "lite-root": {
     "password": "12345678",
     "description": "lite 服务器 root 密码"
-  },
+  }
 }
-'@ -ForegroundColor DarkGray
-        Write-Host ""
+'@ -color DarkGray
+        Write-SafeHost ""
         return
     }
     
-    # Read config
+    # 读取配置文件（指定 UTF-8 编码）
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
     } catch {
-        Write-Host "Error: Config file format error" -ForegroundColor Red
+        Write-SafeHost "错误: 配置文件格式错误或编码不正确，请确保文件为 UTF-8 无 BOM 格式" -color Red
         return
     }
     
-    # Show help
+    # 无参数：显示帮助（中文）
     if (-not $action) {
-        Write-Host "可选项:" -ForegroundColor Green
+        Write-SafeHost "可选项:" -color Green
         
         $hasItems = $false
         $config.PSObject.Properties | ForEach-Object {
@@ -49,20 +81,20 @@ function pw_ {
         }
         
         if (-not $hasItems) {
-            Write-Host "  (No password items configured)" -ForegroundColor Gray
+            Write-SafeHost "  (未配置任何密码项)" -color Gray
         }
         
-        Write-Host ""
-        Write-Host "示例:" -ForegroundColor Cyan
-        Write-Host "  pw_ lite-root     # 复制密码到剪切板" -ForegroundColor White
+        Write-SafeHost ""
+        Write-SafeHost "示例:" -color Cyan
+        Write-SafeHost "  pw_ lite-root     # 复制密码到剪切板" -color White
         
-        return  # Just show help, don't copy anything
+        return
     }
     
-    # Get password item
+    # 查找密码项
     if (-not $config.$action) {
-        Write-Host "Error: Password item '$action' not found" -ForegroundColor Red
-        Write-Host "Use 'pw_' to view all available password items" -ForegroundColor Yellow
+        Write-SafeHost "错误: 密码项 '$action' 不存在" -color Red
+        Write-SafeHost "使用 'pw_' 查看所有可用密码项" -color Yellow
         return
     }
     
@@ -71,85 +103,82 @@ function pw_ {
     $description = $item.description
     
     if (-not $password -or $password -eq $null) {
-        Write-Host "Error: Password item '$action' has no password configured" -ForegroundColor Red
+        Write-SafeHost "错误: 密码项 '$action' 未配置密码" -color Red
         return
     }
     
-    # Copy password to clipboard
+    # 复制到剪贴板
     $copied = $false
     $errorMsg = ""
     
-    # Method 1: Use Set-Clipboard (built-in to Windows PowerShell 5.1+)
+    # 方法1: 使用 Set-Clipboard (Windows PowerShell 5.1+)
     if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
         try {
             Set-Clipboard -Value $password -ErrorAction Stop
             $copied = $true
         } catch {
-            $errorMsg = "Set-Clipboard failed: $_"
+            $errorMsg = "Set-Clipboard 失败: $_"
         }
     }
     
-    # Method 2: If Set-Clipboard is not available or failed, use .NET method
+    # 方法2: 使用 .NET 剪贴板
     if (-not $copied) {
         try {
             Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
             [System.Windows.Forms.Clipboard]::SetText($password)
             $copied = $true
         } catch {
-            $errorMsg = "$errorMsg`n.NET Clipboard failed: $_"
+            $errorMsg = "$errorMsg`n.NET 剪贴板失败: $_"
         }
     }
     
     if ($copied) {
-        Write-Host "✓ 复制 '$action' 密码到剪切板" -ForegroundColor Green
-        Write-Host "说明: $description" -ForegroundColor Cyan
+        Write-SafeHost "✓ 复制 '$action' 密码到剪贴板" -color Green
+        Write-SafeHost "说明: $description" -color Cyan
     } else {
-        Write-Host "Error: Failed to copy to clipboard" -ForegroundColor Red
-        Write-Host "Description: $description" -ForegroundColor Cyan
-        Write-Host "Password: $password" -ForegroundColor Gray
-        Write-Host "Warning: Password displayed on screen, ensure no one is watching" -ForegroundColor Red
+        Write-SafeHost "错误: 复制到剪贴板失败" -color Red
+        Write-SafeHost "说明: $description" -color Cyan
+        Write-SafeHost "密码原文: $password" -color Gray
+        Write-SafeHost "警告: 密码已显示在屏幕上，请注意隐私安全" -color Red
         if ($errorMsg) {
-            Write-Host "Error details: $errorMsg" -ForegroundColor DarkRed
+            Write-SafeHost "详细错误: $errorMsg" -color DarkRed
         }
     }
 }
 
-# Tab completion
+# Tab 补全（保持原有逻辑，但确保配置文件读取编码正确）
 Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\password.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\password.json"
     
     if (-not (Test-Path $configFile)) {
         return
     }
     
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        # 指定 UTF8 编码读取
+        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
+        $config = $raw | ConvertFrom-Json
         
-        # Get all available password items
         $completionItems = $config.PSObject.Properties | Where-Object {
             $_.Value.password -and $_.Value.password -ne $null
         } | ForEach-Object {
             $key = $_.Name
             $description = $_.Value.description
             
-            # Create completion item
             [System.Management.Automation.CompletionResult]::new(
-                $key,                    # Completion text
-                $key,                    # List text
-                'ParameterValue',        # Result type
-                $description             # Tooltip
+                $key,
+                $key,
+                'ParameterValue',
+                $description
             )
         }
         
-        # Filter completion items based on current input
         $completionItems | Where-Object {
             $_.CompletionText -like "$wordToComplete*"
         }
-        
     } catch {
-        # If parsing fails, return empty result
         return
     }
 }

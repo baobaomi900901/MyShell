@@ -2,99 +2,124 @@
 # -*- coding: utf-8 -*-
 
 """
-cd.py - 通用目录跳转脚本
-支持 Windows PowerShell 和 macOS zsh
+cd.py - 通用目录跳转脚本（中文帮助，兼容 Windows 旧终端）
 """
 
 import os
 import sys
 import json
 import platform
-from pathlib import Path
 import subprocess
+import ctypes
+from pathlib import Path
 
-# ANSI 颜色代码（macOS 终端同样支持）
-YELLOW = '\033[93m'
-RED = '\033[91m'
-GRAY = '\033[90m'
-RESET = '\033[0m'
+# ---------- 获取控制台实际编码 ----------
+def get_console_encoding():
+    """返回控制台实际使用的编码名称（Windows 下通常为 cp936/GBK）"""
+    if platform.system() == "Windows":
+        try:
+            if hasattr(ctypes, 'windll'):
+                cp = ctypes.windll.kernel32.GetConsoleOutputCP()
+                return f'cp{cp}'
+        except Exception:
+            pass
+        return 'gbk'  # 默认
+    else:
+        return 'utf-8'
 
-# Windows 经典终端且不是 Windows Terminal 时禁用颜色
-if os.name == 'nt' and 'WT_SESSION' not in os.environ:
-    YELLOW = RED = GRAY = RESET = ''
+CONSOLE_ENCODING = get_console_encoding()
 
-def setup_utf8_console():
-    if platform.system() != "Windows":
-        return
+def safe_print(text, file=sys.stdout):
+    """根据控制台实际编码安全打印，避免乱码"""
     try:
-        # 切换控制台代码页为 UTF-8
-        subprocess.run("chcp 65001", shell=True, check=False, capture_output=True)
-        # 强制 Python 输出使用 UTF-8
-        if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding='utf-8')
-        else:
-            import io
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    except Exception:
-        pass
+        # 直接打印，让 Python 自动转换
+        print(text, file=file)
+    except UnicodeEncodeError:
+        # 如果默认编码失败，强制用控制台编码重新编码
+        encoded_bytes = text.encode(CONSOLE_ENCODING, errors='replace')
+        decoded = encoded_bytes.decode(CONSOLE_ENCODING, errors='replace')
+        print(decoded, file=file)
 
+# ---------- 颜色控制：旧终端下完全禁用 ----------
+def use_color():
+    """Windows 旧终端（非 Windows Terminal）下禁用颜色"""
+    if platform.system() != "Windows":
+        return True
+    if 'WT_SESSION' in os.environ:
+        return True
+    # 尝试启用虚拟终端处理，若失败则禁用颜色
+    try:
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+        if (mode.value & 0x0004) == 0:
+            kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+        return True
+    except Exception:
+        return False
+
+_use_color = use_color()
+YELLOW = '\033[93m' if _use_color else ''
+RED    = '\033[91m' if _use_color else ''
+GRAY   = '\033[90m' if _use_color else ''
+RESET  = '\033[0m'  if _use_color else ''
+
+# ---------- 配置路径 ----------
 def get_config_path():
-    """返回配置文件路径，优先使用环境变量 MYSHELL"""
     myshell = os.environ.get('MYSHELL')
     if myshell:
         return Path(myshell) / "config" / "private" / "path.json"
-    # 兼容 Windows 旧路径（仅当 MYSHELL 未设置时）
-    user_profile = os.environ.get('USERPROFILE', '')
-    if not user_profile:
-        user_profile = str(Path.home())
+    user_profile = os.environ.get('USERPROFILE', str(Path.home()))
     return Path(user_profile) / "Documents" / "WindowsPowerShell" / "MyShell" / "config" / "private" / "path.json"
 
 def load_config(config_path):
-    """加载并解析 JSON 配置文件"""
     try:
         with open(config_path, 'r', encoding='utf-8-sig') as f:
             return json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON 解析错误: {e}", file=sys.stderr)
-        return None
     except Exception as e:
-        print(f"❌ 读取配置文件失败: {e}", file=sys.stderr)
+        safe_print(f"{RED}加载配置文件失败: {e}{RESET}", file=sys.stderr)
         return None
 
 def print_missing_config(config_path):
-    """打印配置文件缺失的友好提示，包含 JSON 模板"""
-    print(f"\n{RED}❌ 配置文件不存在: {config_path}{RESET}")
-    print(f"{YELLOW}请手动创建该文件，模板如下：{RESET}")
-
-    # 构建示例配置
-    example_config = {
+    safe_print(f"\n{RED}配置文件不存在: {config_path}{RESET}")
+    safe_print(f"{YELLOW}请手动创建该文件，模板如下（保存为 UTF-8 无 BOM 格式）：{RESET}")
+    example = {
         "MyShell": {
             "win": r"C:\Users\YourUsername\Documents\WindowsPowerShell\MyShell",
             "mac": "/Users/YourUsername/MyShell",
             "description": "MyShell 配置目录"
         }
     }
-    template = json.dumps(example_config, indent=2, ensure_ascii=False)
-    print(f"{GRAY}{template}{RESET}\n")
+    safe_print(json.dumps(example, indent=2, ensure_ascii=False))
+    safe_print("")
 
 def show_help(config):
-    """打印彩色帮助信息"""
-    lines = ["快速目录跳转", "用法: cd_ <名称>", "", "可用目录:"]
-    names = [key.replace('_', '-') for key, val in config.items() if val.get('win') or val.get('mac')]
-    max_len = max(len(name) for name in names) if names else 0
-
-    for key, val in config.items():
-        if val.get('win') or val.get('mac'):
-            display_name = key.replace('_', '-')
+    """显示中文帮助信息"""
+    lines = [
+        f"{YELLOW}快速目录跳转{RESET}",
+        f"用法: {YELLOW}cd_ <名称>{RESET}",
+        "",
+        f"{YELLOW}可用目录:{RESET}"
+    ]
+    items = [(key.replace('_', '-'), val) for key, val in config.items() if val.get('win') or val.get('mac')]
+    if not items:
+        lines.append("  (无可用目录)")
+    else:
+        max_len = max(len(name) for name, _ in items)
+        for name, val in items:
             desc = val.get('description', '')
-            lines.append(f"  {YELLOW}{display_name:<{max_len}}{RESET} # {desc}")
+            lines.append(f"  {YELLOW}{name:<{max_len}}{RESET} # {desc}")
     return "\n".join(lines)
 
+def fix_win_path(path_str):
+    """修正 Windows 路径中的重复盘符，如 D:D:\\xxx -> D:\\xxx"""
+    import re
+    return re.sub(r'^([A-Za-z]):\1:\\', r'\1:\\', path_str)
+
 def main():
-    setup_utf8_console()
     config_path = get_config_path()
 
-    # 无参数或空参数 -> 显示帮助
     if len(sys.argv) < 2 or not sys.argv[1]:
         if not config_path.exists():
             print_missing_config(config_path)
@@ -102,7 +127,7 @@ def main():
         config = load_config(config_path)
         if config is None:
             sys.exit(1)
-        print(show_help(config))
+        safe_print(show_help(config))
         return
 
     action = sys.argv[1]
@@ -117,58 +142,49 @@ def main():
         sys.exit(1)
 
     if internal_action not in config:
-        print(f"❌ 目录 '{action}' 不存在")
+        safe_print(f"{RED}目录 '{action}' 不存在{RESET}")
         sys.exit(1)
 
     item = config[internal_action]
     system = platform.system()
 
-    # 根据操作系统选择路径字段
     if system == "Windows":
         target_path = item.get('win')
         if target_path is None:
-            print(f"❌ 目录 '{action}' 在 Windows 上未配置")
+            safe_print(f"{RED}目录 '{action}' 在 Windows 上未配置{RESET}")
             sys.exit(1)
-    elif system == "Darwin":  # macOS
+        target_path = fix_win_path(target_path)
+    elif system == "Darwin":
         target_path = item.get('mac')
         if target_path is None:
-            print(f"❌ 目录 '{action}' 在 macOS 上未配置。请在配置中添加 'mac' 字段。")
+            safe_print(f"{RED}目录 '{action}' 在 macOS 上未配置{RESET}")
             sys.exit(1)
     else:
-        # 其他 Unix 系统，优先 mac 字段，否则尝试 win（需转换）
         target_path = item.get('mac') or item.get('win')
         if target_path is None:
-            print(f"❌ 目录 '{action}' 未配置")
+            safe_print(f"{RED}目录 '{action}' 未配置{RESET}")
             sys.exit(1)
-        if 'mac' not in item:
-            print("⚠️  建议在配置中添加 'mac' 字段以支持 macOS", file=sys.stderr)
 
-    # 路径规范化：如果是 macOS 但路径包含反斜杠（Windows 风格），尝试转换并警告
     if system != "Windows" and '\\' in target_path:
-        print(f"⚠️  路径包含反斜杠，可能不是有效的 Unix 路径: {target_path}", file=sys.stderr)
         target_path = target_path.replace('\\', '/')
 
     path_obj = Path(target_path).expanduser().resolve()
     if not path_obj.exists():
-        print(f"❌ 目录不存在 - {path_obj}")
+        safe_print(f"{RED}目录不存在: {path_obj}{RESET}")
         sys.exit(1)
     if not path_obj.is_dir():
-        print(f"❌ 路径不是目录 - {path_obj}")
-        if path_obj.is_file():
-            print("提示: 该路径是一个文件，若要运行工具请使用 'tool_ xxx'")
+        safe_print(f"{RED}路径不是目录: {path_obj}{RESET}")
         sys.exit(1)
 
-    target_path_str = str(path_obj)
+    target = str(path_obj)
 
-    # 根据平台对路径中的单引号进行转义，并构造带引号的路径字符串
-    if os.name == 'nt':   # Windows
-        escaped = target_path_str.replace("'", "''")
-        quoted_path = f"'{escaped}'"
-        print(f"Set-Location {quoted_path}")
-    else:                 # macOS / Linux
-        escaped = target_path_str.replace("'", "'\\''")
-        quoted_path = f"'{escaped}'"
-        print(f"cd {quoted_path}")
+    # 输出跳转命令（路径中可能含中文，但 safe_print 会处理）
+    if os.name == 'nt':
+        escaped = target.replace("'", "''")
+        safe_print(f"Set-Location '{escaped}'")
+    else:
+        escaped = target.replace("'", "'\\''")
+        safe_print(f"cd '{escaped}'")
 
 if __name__ == "__main__":
     main()
