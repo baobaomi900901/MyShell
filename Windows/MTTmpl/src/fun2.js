@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import readline from 'readline';
-import convertArg from '../../../public/typeOf/convertArg.js'; // 相对路径导入
+import convertArg from '../../../public/hooks/convertArg.js'; // 相对路径导入
 
 // 获取命令行参数（前两个是 node 路径和脚本路径，跳过）
 const args = process.argv.slice(2);

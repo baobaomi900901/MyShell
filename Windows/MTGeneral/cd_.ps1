@@ -53,20 +53,26 @@
 Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\path.json"
+    # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
+    if ($env:MYSHELL) {
+        $configFile = Join-Path $env:MYSHELL "config\private\path.json"
+    } else {
+        $userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath('UserProfile') }
+        $configFile = Join-Path $userProfile "Documents\WindowsPowerShell\MyShell\config\private\path.json"
+    }
 
     if (-not (Test-Path $configFile)) {
         return
     }
 
     try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
         $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.win -and $_.Value.win -ne $null
+            $_.Value.win -or $_.Value.mac
         } | ForEach-Object {
             $displayName = $_.Name -replace '_', '-'
-            $description = $_.Value.description
+            $description = $_.Value.description -replace "`n", " "
             [System.Management.Automation.CompletionResult]::new(
                 $displayName,
                 $displayName,

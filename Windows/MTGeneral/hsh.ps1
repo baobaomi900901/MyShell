@@ -14,7 +14,7 @@
         return
     }
 
-    $jsonPath = Join-Path $env:myshell "config\function_tracker.json"
+    $jsonPath = Join-Path $env:myshell "config\private\function_tracker.json"
     
     if (-not (Test-Path $jsonPath)) {
         Write-Error "找不到 function_tracker.json，预期路径：$jsonPath"
@@ -103,11 +103,12 @@
 
     $topNames = $topNames | Sort-Object
 
-    # 输出顶层函数（整行黄色）
+    # 输出顶层函数（函数名黄色，描述默认色）
     foreach ($name in $topNames) {
         $desc = $funcDesc[$name]
-        $line = "  " + $name.PadRight($maxLen + 2) + "# " + $desc
-        Write-Host $line -ForegroundColor Yellow
+        $namePart = "  " + $name.PadRight($maxLen + 2)
+        Write-Host -NoNewline $namePart -ForegroundColor Yellow
+        Write-Host "# " $desc
     }
 
     # 输出多函数文件分组
@@ -119,8 +120,9 @@
         $names = $multiFileFuncs[$file] | Sort-Object
         foreach ($name in $names) {
             $desc = $funcDesc[$name]
-            $line = "    " + $name.PadRight($maxLen + 2) + "# " + $desc
-            Write-Host $line -ForegroundColor Yellow
+            $namePart = "    " + $name.PadRight($maxLen + 2)
+            Write-Host -NoNewline $namePart -ForegroundColor Yellow
+            Write-Host "# " $desc
         }
     }
 

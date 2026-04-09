@@ -8,7 +8,7 @@ function game_ {
         [string]$action
     )
 
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\game.json"
+    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
         Write-Host "Error: Config file not found" -ForegroundColor Red

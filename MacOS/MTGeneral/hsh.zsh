@@ -69,11 +69,11 @@ hsh() {
   done
 
   # 颜色定义
-  local color_name=$'\e[32m'   # 绿色（函数名）
-  local color_desc=$'\e[34m'    # 蓝色（描述）
-  local color_file=$'\e[33m'    # 黄色（文件名分组）
+  local color_name=$'\e[33m'   # 黄色（函数名）
+  local color_file=$'\e[34m'   # 蓝色（文件名分组）
   local reset=$'\e[0m'
 
+  echo ""
   echo "内置方法:"
 
   # ------------------------------------------------------------------
@@ -105,26 +105,27 @@ hsh() {
 
   # 输出顶层函数
   for name in "${top_names[@]}"; do
-    printf "  %s%-*s%s  # %s%s%s\n" \
+    printf "  %s%-*s%s  # %s\n" \
            "$color_name" $max_len "$name" "$reset" \
-           "$color_desc" "${func_desc[$name]}" "$reset"
+           "${func_desc[$name]}"
   done
 
   # ------------------------------------------------------------------
   # 输出多函数文件分组（按文件名排序）
   # ------------------------------------------------------------------
   local group_files=(${(on)${(k)multi_funcs}})
+  echo ""
   for file in "${group_files[@]}"; do
     # 提取纯文件名（不含路径）
     local filename="${file##*/}"
     printf "  %s%s:%s\n" "$color_file" "$filename" "$reset"
-
     # 获取该文件下的函数名列表并排序
     local names=(${(on)${=multi_funcs[$file]}})
     for name in "${names[@]}"; do
-      printf "    %s%-*s%s  # %s%s%s\n" \
+      printf "    %s%-*s%s  # %s\n" \
              "$color_name" $max_len "$name" "$reset" \
-             "$color_desc" "${func_desc[$name]}" "$reset"
+             "${func_desc[$name]}"
     done
+    echo ""
   done
 }

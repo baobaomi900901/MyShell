@@ -1,0 +1,12 @@
+﻿{
+  "hotkey": {
+    "win": "D:\\Program Files\\AutoHotkey\\MyHotkey",
+    "mac": null,
+    "description": "AHK热键脚本"
+  },
+  "MyShell": {
+    "win": "C:\\Users\\mobytang\\Documents\\WindowsPowerShell\\MyShell",
+    "mac": "/Users/mobytang/MyShell",
+    "description": "MyShell 配置目录"
+  }
+}

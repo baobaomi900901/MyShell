@@ -29,6 +29,7 @@ import urllib.request
 import configparser
 import re
 import ctypes
+import json                     # 新增：用于解析 JSON
 from datetime import datetime
 from pathlib import Path
 import questionary
@@ -37,7 +38,8 @@ import questionary
 AOM_PATH = r"D:\Code\aom"
 BUILD_EXE = r"D:\Code\aom\KingAutomate\Build\Build\Build.exe"
 WEB_DIR = r"D:\Code\aom\KingAutomate\web"
-VERSION_INI_URL = "http://k-rpa-lite.kingsware.cn:50351/krpalite/package/LiteVersion.ini"
+# 【修改点1】将原 ini 文件地址改为新的 JSON API 地址
+VERSION_API_URL = "http://192.168.104.153:8765/v1/update/windows/latest"
 
 
 def run_command(cmd, cwd=None, check=True, encoding='gbk', timeout=None):
@@ -142,33 +144,26 @@ def get_git_info():
         return "unknown", "unknown"
 
 
+# 【修改点2】函数完全重写，改为从 JSON API 读取 version 字段
 def fetch_newversion_from_url(url):
     """
-    从指定 URL 下载 LiteVersion.ini，解析出 newversion 的值
-    返回 newversion 字符串，失败返回 None
+    从指定 JSON API 获取 version 字段的值
+    返回 version 字符串，失败返回 None
     """
     print(f"正在从远程获取版本信息: {url}")
     try:
         response = urllib.request.urlopen(url, timeout=10)
-        content = response.read()
-        # 尝试多种编码解析
-        for enc in ['utf-8', 'gbk', 'gb2312']:
-            try:
-                decoded = content.decode(enc)
-                break
-            except UnicodeDecodeError:
-                continue
+        # 直接按 utf-8 解析 JSON（标准 JSON 使用 utf-8）
+        data = json.loads(response.read().decode('utf-8'))
+        version = data.get('version')
+        if version:
+            return version.strip()
         else:
-            decoded = content.decode('utf-8', errors='ignore')
-
-        config = configparser.ConfigParser()
-        config.read_string(decoded)
-        newversion = config.get('Main', 'newversion', fallback=None)
-        if newversion:
-            return newversion.strip()
-        else:
-            print("未找到 [Main] 下的 newversion 字段")
+            print("JSON 响应中未找到 version 字段")
             return None
+    except json.JSONDecodeError as e:
+        print(f"JSON 解析失败: {e}")
+        return None
     except Exception as e:
         print(f"获取或解析远程版本失败: {e}")
         return None
@@ -308,15 +303,22 @@ def update_dproj_version(new_version):
         return False
 
 
-def run_build_exe():
+def run_build_exe(version_string=None):
     """
     直接运行 Build.exe，将终端交还给用户手动交互。
     运行前临时将控制台代码页设为 GBK (936) 以解决中文乱码，运行后恢复。
     工作目录设为 AOM_PATH（与 PowerShell 脚本一致），不捕获输出，不自动输入。
+    如果提供了 version_string，则将其作为命令行参数传递给 Build.exe。
     """
     if not os.path.exists(BUILD_EXE):
         print(f"错误: 找不到 Build.exe，路径: {BUILD_EXE}")
         return False
+
+    # 构建命令列表
+    cmd = [BUILD_EXE]
+    if version_string:
+        cmd.append(version_string)
+        print(f"将传递版本参数: {version_string}")
 
     print("正在运行 Build.exe...")
     print("（终端已交给 Build.exe，请手动完成交互，完成后脚本将继续）")
@@ -333,7 +335,7 @@ def run_build_exe():
         print(f"警告: 无法设置控制台代码页，输出可能仍为乱码: {e}")
 
     try:
-        result = subprocess.run([BUILD_EXE], cwd=work_dir)
+        result = subprocess.run(cmd, cwd=work_dir)
     finally:
         # 恢复原代码页
         if old_cp is not None:
@@ -453,13 +455,14 @@ def main():
 
     if build_type == "测试":
         version_string = f"{timestamp}|{branch}_#_{commit_hash}"
+        version_number = timestamp  # 测试版不需要更新 dproj
         print("\n" + "=" * 40)
         print("生成的版本标识符（测试）:")
         print(version_string)
         print("=" * 40)
-        version_number = timestamp  # 测试版不需要更新 dproj
     else:  # 正式发版
-        remote_version = fetch_newversion_from_url(VERSION_INI_URL)
+        # 【修改点3】使用新的 API 地址获取版本
+        remote_version = fetch_newversion_from_url(VERSION_API_URL)
         if remote_version:
             incremented_version = increment_version(remote_version)
             print(f"原始版本: {remote_version}，递增后: {incremented_version}")
@@ -514,16 +517,7 @@ def main():
                 version_string = f"{timestamp}|{branch}_#_{commit_hash}"
             print(f"使用版本号: {version_string}")
 
-    # 统一复制版本标识符到剪贴板（测试和正式均执行）
-    try:
-        import pyperclip
-        pyperclip.copy(version_string)
-        print("✅ 版本标识符已复制到剪贴板，可直接粘贴。")
-    except ImportError:
-        print("⚠️ 未安装 pyperclip，无法自动复制。请手动复制上面的版本标识符。")
-        print("   安装命令: pip install pyperclip")
-    except Exception as e:
-        print(f"⚠️ 复制到剪贴板失败: {e}")
+    # 移除剪贴板复制功能（用户要求不再复制）
 
     # 如果是正式版，还需要更新 dproj 文件
     if build_type == "正式发版":
@@ -532,13 +526,15 @@ def main():
             print("错误: 更新 dproj 文件失败，终止构建。")
             return 1
 
-    # 8. 运行 Build.exe，完全交给用户交互（步骤编号根据正式版调整）
+    # 8. 运行 Build.exe，根据构建类型传递不同参数
     if build_type == "测试":
         print("\n[6/7] 运行 Build.exe...")
+        param_to_pass = version_string   # 完整标识符
     else:
         print("\n[7/7] 运行 Build.exe...")
+        param_to_pass = version_string   # 修改为完整标识符
 
-    build_success = run_build_exe()
+    build_success = run_build_exe(param_to_pass)
 
     # 如果构建成功且用户选择了打包，则运行打包脚本（继承终端以实现交互）
     if build_success and need_pack:

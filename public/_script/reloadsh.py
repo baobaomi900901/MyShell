@@ -8,8 +8,15 @@ import re
 import argparse
 import ast
 import sys
-import questionary
 from pathlib import Path
+from typing import List, Dict, Set, Tuple, Optional, Any
+
+try:
+    import questionary
+except ImportError:
+    print("缺少 questionary 模块，请执行 pip install questionary")
+    sys.exit(10)
+
 
 try:
     import keyboard
@@ -18,129 +25,143 @@ except ImportError:
     sys.exit(10)
 
 # ----------------------------------------------------------------------
-# 函数扫描：根据文件类型提取函数名和描述
+# 常量定义
 # ----------------------------------------------------------------------
-def find_functions_in_file(filepath):
+JSON_FIELD_FUNCTION = "function"
+JSON_FIELD_FUNCTION_NAME = "functionName"          # 兼容旧格式
+JSON_FIELD_PYTHON_PACKAGE = "pip_package"
+JSON_FIELD_PIP_IGNORE = "pip_ignore"
+JSON_FIELD_PIP_ALIASES = "pip_aliases"
+
+DESC_MARKER = "# 用途:"
+MAX_DESC_LINES = 5
+
+# ----------------------------------------------------------------------
+# 全局缓存：标准库模块集合（只计算一次）
+# ----------------------------------------------------------------------
+_STDLIB_MODULES: Optional[Set[str]] = None
+
+def _get_stdlib_modules() -> Set[str]:
+    """获取 Python 标准库模块名集合（带缓存）"""
+    global _STDLIB_MODULES
+    if _STDLIB_MODULES is not None:
+        return _STDLIB_MODULES
+
+    try:
+        if hasattr(sys, 'stdlib_module_names'):
+            _STDLIB_MODULES = set(sys.stdlib_module_names)
+        else:
+            import pkgutil
+            _STDLIB_MODULES = {module.name for module in pkgutil.iter_modules()}
+    except Exception as e:
+        print(f"⚠️  Warning: Could not determine standard library modules: {e}", file=sys.stderr)
+        _STDLIB_MODULES = set()
+    return _STDLIB_MODULES
+
+# ----------------------------------------------------------------------
+# 函数扫描：公共提取逻辑
+# ----------------------------------------------------------------------
+def _extract_functions_from_lines(
+    lines: List[str],
+    name_patterns: List[str],
+    desc_marker: str = DESC_MARKER,
+    max_desc_lines: int = MAX_DESC_LINES
+) -> List[Dict[str, str]]:
     """
-    根据文件扩展名选择合适的函数提取方式。
+    从行列表中提取函数信息。
+    name_patterns: 函数名匹配的正则表达式列表。
     返回函数信息列表，每个元素为 {"name": 函数名, "description": 描述, "file": 文件路径}
     """
+    functions = []
+    for i, line in enumerate(lines):
+        for pattern in name_patterns:
+            match = re.search(pattern, line)
+            if match:
+                func_name = match.group(1)
+                if func_name.startswith('_'):
+                    continue
+                # 查找描述
+                desc = ""
+                for j in range(i+1, min(i+max_desc_lines, len(lines))):
+                    stripped = lines[j].lstrip()
+                    if stripped.startswith(desc_marker):
+                        desc = stripped[len(desc_marker):].strip()
+                        break
+                functions.append({
+                    "name": func_name,
+                    "description": desc,
+                    "file": ""   # 调用者填充
+                })
+                break  # 匹配到后跳出内层模式循环
+    return functions
+
+def find_functions_in_ps1(filepath: Path) -> List[Dict[str, str]]:
+    """从 PowerShell 脚本中提取函数"""
+    functions = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+        pattern = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*'
+        extracted = _extract_functions_from_lines(lines, [pattern])
+        for func in extracted:
+            func["file"] = str(filepath)
+        functions.extend(extracted)
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}", file=sys.stderr)
+    return functions
+
+def find_functions_in_zsh(filepath: Path) -> List[Dict[str, str]]:
+    """从 zsh 脚本中提取函数"""
+    functions = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+        patterns = [
+            r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*',
+            r'^\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*\(\s*\)\s*'
+        ]
+        extracted = _extract_functions_from_lines(lines, patterns)
+        for func in extracted:
+            func["file"] = str(filepath)
+        functions.extend(extracted)
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}", file=sys.stderr)
+    return functions
+
+def find_functions_in_file(filepath: Path) -> List[Dict[str, str]]:
+    """根据扩展名选择提取函数"""
     ext = filepath.suffix.lower()
     if ext == '.ps1':
         return find_functions_in_ps1(filepath)
     elif ext == '.zsh':
         return find_functions_in_zsh(filepath)
     else:
-        # 不支持的文件类型，返回空列表
         return []
 
-def find_functions_in_ps1(filepath):
-    """从 PowerShell 脚本中提取函数"""
-    functions = []
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
-
-        # 匹配 function 定义行，支持包含连字符的函数名（如 Invoke-CleanImage）
-        pattern = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*'
-        for i, line in enumerate(lines):
-            match = re.search(pattern, line)
-            if match:
-                func_name = match.group(1)
-                if func_name.startswith('_'):
-                    continue
-                # 在函数定义后最多5行内查找 "# 用途:"
-                desc = ""
-                for j in range(i+1, min(i+5, len(lines))):
-                    stripped = lines[j].lstrip()
-                    if stripped.startswith("# 用途:"):
-                        desc = stripped[len("# 用途:"):].strip()
-                        break
-                functions.append({
-                    "name": func_name,
-                    "description": desc,
-                    "file": str(filepath)
-                })
-    except Exception as e:
-        print(f"Error reading {filepath}: {e}", file=sys.stderr)
-    return functions
-
-def find_functions_in_zsh(filepath):
-    """从 zsh 脚本中提取函数"""
-    functions = []
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
-
-        # 匹配两种常见函数定义格式：
-        # 1. function name { ... }
-        # 2. name() { ... }
-        # 注意：函数名允许包含字母、数字、下划线、连字符，但不能以数字开头
-        pattern_func_keyword = r'^\s*function\s+([a-zA-Z_][a-zA-Z0-9_-]*)\s*'
-        pattern_parentheses = r'^\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*\(\s*\)\s*'
-
-        for i, line in enumerate(lines):
-            # 尝试匹配 function 关键字形式
-            match = re.search(pattern_func_keyword, line)
-            if not match:
-                # 尝试匹配 name() 形式
-                match = re.search(pattern_parentheses, line)
-            if match:
-                func_name = match.group(1)
-                if func_name.startswith('_'):
-                    continue
-                # 在函数定义后最多5行内查找 "# 用途:"
-                desc = ""
-                for j in range(i+1, min(i+5, len(lines))):
-                    stripped = lines[j].lstrip()
-                    if stripped.startswith("# 用途:"):
-                        desc = stripped[len("# 用途:"):].strip()
-                        break
-                functions.append({
-                    "name": func_name,
-                    "description": desc,
-                    "file": str(filepath)
-                })
-    except Exception as e:
-        print(f"Error reading {filepath}: {e}", file=sys.stderr)
-    return functions
-
 # ----------------------------------------------------------------------
-# 第三方包扫描：分析项目内所有 .py 文件的 import 语句
+# 第三方包扫描
 # ----------------------------------------------------------------------
-def get_third_party_packages(root_dir, exclude_packages=None):
+def get_third_party_packages(
+    root_dir: Path,
+    exclude_packages: Optional[List[str]] = None,
+    alias_map: Optional[Dict[str, str]] = None
+) -> List[str]:
     """
     扫描 root_dir 下所有 .py 文件，收集第三方包名。
-    exclude_packages: 列表，需要排除的包名（映射后的真实包名，如 'pywin32'）。
+    exclude_packages: 需要排除的包名（映射后的真实包名）。
+    alias_map: 别名到真实包名的映射字典。
     返回去重排序后的列表。
     """
     if exclude_packages is None:
         exclude_packages = []
+    if alias_map is None:
+        alias_map = {}
 
-    PACKAGE_ALIASES = {
-        'win32gui': 'pywin32',
-        'win32api': 'pywin32',
-        'win32con': 'pywin32',
-        'win32file': 'pywin32',
-        'win32process': 'pywin32',
-        'win32com': 'pywin32',
-    }
-
-    packages = set()
-    # 获取标准库模块名
-    try:
-        if hasattr(sys, 'stdlib_module_names'):
-            stdlib_modules = sys.stdlib_module_names
-        else:
-            import pkgutil
-            stdlib_modules = {module.name for module in pkgutil.iter_modules()}
-    except Exception as e:
-        print(f"Warning: Could not determine standard library modules: {e}", file=sys.stderr)
-        stdlib_modules = set()
+    stdlib_modules = _get_stdlib_modules()
+    packages: Set[str] = set()
 
     for py_file in Path(root_dir).rglob('*.py'):
         try:
-            # 使用 utf-8-sig 自动移除 BOM
             with open(py_file, 'r', encoding='utf-8-sig') as f:
                 tree = ast.parse(f.read(), filename=py_file)
             for node in ast.walk(tree):
@@ -160,27 +181,60 @@ def get_third_party_packages(root_dir, exclude_packages=None):
             print(f"Error processing {py_file}: {e}", file=sys.stderr)
 
     # 应用别名映射
-    mapped_packages = set()
+    mapped_packages: Set[str] = set()
     for pkg in packages:
-        mapped = PACKAGE_ALIASES.get(pkg, pkg)
+        mapped = alias_map.get(pkg, pkg)
         mapped_packages.add(mapped)
 
-    # 排除手动指定的包
-    mapped_packages = mapped_packages - set(exclude_packages)
+    # 排除指定包
+    mapped_packages -= set(exclude_packages)
 
     return sorted(mapped_packages)
 
 # ----------------------------------------------------------------------
+# 配置文件加载
+# ----------------------------------------------------------------------
+def load_pip_config() -> Tuple[List[str], Dict[str, List[str]]]:
+    """
+    加载 ${MYSHELL}/config/public/reloadsh_pip.json 配置文件。
+    返回 (pip_ignore, pip_aliases) 元组。
+    如果环境变量未设置或文件读取失败，返回空列表和空字典。
+    """
+    ignore_list: List[str] = []
+    aliases: Dict[str, List[str]] = {}
+
+    myshell = os.environ.get('MYSHELL')
+    if not myshell:
+        print("⚠️  环境变量 MYSHELL 未设置，无法加载 pip 配置文件", file=sys.stderr)
+        return ignore_list, aliases
+
+    config_path = Path(myshell) / 'config' / 'public' / 'reloadsh_pip.json'
+    try:
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            ignore_list = config.get(JSON_FIELD_PIP_IGNORE, [])
+            if not isinstance(ignore_list, list):
+                ignore_list = []
+            aliases = config.get(JSON_FIELD_PIP_ALIASES, {})
+            if not isinstance(aliases, dict):
+                aliases = {}
+            print(f"✅ 已加载 pip 配置: {config_path}", file=sys.stderr)
+        else:
+            print(f"⚠️  pip 配置文件不存在: {config_path}，使用默认配置（无忽略包、无别名）", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  读取 pip 配置文件失败: {e}，使用默认配置（无忽略包、无别名）", file=sys.stderr)
+
+    return ignore_list, aliases
+
+# ----------------------------------------------------------------------
 # 终端类型检测与按键模拟
 # ----------------------------------------------------------------------
-def detect_terminal():
+def detect_terminal() -> str:
     """检测终端类型（基于环境变量 TERM_PROGRAM）"""
-    if os.environ.get('TERM_PROGRAM') == 'vscode':
-        return "vscode"
-    else:
-        return "windows"
+    return "vscode" if os.environ.get('TERM_PROGRAM') == 'vscode' else "windows"
 
-def send_combo(keys):
+def send_combo(keys: List[str]) -> None:
     """按下并释放组合键"""
     for key in keys:
         keyboard.press(key)
@@ -188,18 +242,18 @@ def send_combo(keys):
     for key in reversed(keys):
         keyboard.release(key)
 
-def send_vscode_combo():
+def send_vscode_combo() -> None:
     """Ctrl+Shift+` （VS Code 新建终端）"""
     send_combo(['ctrl', 'shift', '`'])
 
-def send_windows_combo():
+def send_windows_combo() -> None:
     """Ctrl+Shift+t （Windows 恢复已关闭标签页）"""
     send_combo(['ctrl', 'shift', 't'])
 
 # ----------------------------------------------------------------------
 # 主程序
 # ----------------------------------------------------------------------
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Reloadsh helper')
     parser.add_argument('--system-dir', required=True, help='Path to system directory containing script files')
     parser.add_argument('--json-file', required=True, help='Path to function_tracker.json')
@@ -232,31 +286,33 @@ def main():
         else:
             print(f"警告: 提供的公共脚本目录不存在或不是目录: {public_script_dir}", file=sys.stderr)
 
-    # 读取旧数据（函数名、排除列表等）
-    old_function_names = []
-    old_data = {}                     # 保存完整的旧 JSON 数据
-    ignore_packages = []               # 排除包名列表，默认为空
+    # 加载 pip 配置（忽略列表和别名映射）
+    pip_ignore, pip_aliases = load_pip_config()
+
+    # 将别名配置转换为 {别名: 真实包名} 映射
+    alias_map: Dict[str, str] = {}
+    for real_pkg, aliases in pip_aliases.items():
+        for alias in aliases:
+            alias_map[alias] = real_pkg
+
+    # 读取旧数据（函数名等）
+    old_function_names: List[str] = []
+    old_data: Dict[str, Any] = {}
     if json_file.exists():
         try:
             with open(json_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                old_data = data        # 保存完整数据
+                old_data = data
                 # 提取函数名（兼容新旧格式）
-                if "function" in data:
-                    old_function_names = list(data["function"].keys())
-                elif "functionName" in data:
-                    old_function_names = data["functionName"]
-                # 提取排除包名列表（键名为 pythoPackageIgnore）
-                ignore_packages = data.get("pythoPackageIgnore", [])
-                if not isinstance(ignore_packages, list):
-                    ignore_packages = []
+                if JSON_FIELD_FUNCTION in data:
+                    old_function_names = list(data[JSON_FIELD_FUNCTION].keys())
+                elif JSON_FIELD_FUNCTION_NAME in data:
+                    old_function_names = data[JSON_FIELD_FUNCTION_NAME]
         except Exception as e:
             print(f"⚠️  Warning: Could not read existing {json_file} (will be overwritten): {e}", file=sys.stderr)
 
-    # ------------------------------------------------------------------
     # 扫描所有指定目录下的脚本文件，获取新函数信息
-    # ------------------------------------------------------------------
-    new_function_infos = []
+    new_function_infos: List[Dict[str, str]] = []
     for scan_dir in scan_dirs:
         for ext in script_extensions:
             script_files = sorted(scan_dir.rglob(f'*{ext}'))
@@ -264,7 +320,7 @@ def main():
                 new_function_infos.extend(find_functions_in_file(script_file))
 
     # 去重（同名函数保留首次扫描到的描述和文件）
-    unique_functions = {}
+    unique_functions: Dict[str, Dict[str, str]] = {}
     for info in new_function_infos:
         name = info["name"]
         if name not in unique_functions:
@@ -287,22 +343,24 @@ def main():
     # 计算添加/删除（仅基于函数名）
     old_set = set(old_function_names)
     new_set = set(new_function_names)
-    added = sorted(list(new_set - old_set))
-    removed = sorted(list(old_set - new_set))
+    added = sorted(new_set - old_set)
+    removed = sorted(old_set - new_set)
 
-    # ------------------------------------------------------------------
     # 扫描第三方包：合并所有扫描目录下的 Python 包（无论系统类型，都扫描 .py 文件）
-    # ------------------------------------------------------------------
-    all_packages = set()
+    all_packages: Set[str] = set()
     for scan_dir in scan_dirs:
         try:
-            dir_packages = get_third_party_packages(scan_dir, exclude_packages=ignore_packages)
+            dir_packages = get_third_party_packages(
+                scan_dir,
+                exclude_packages=pip_ignore,
+                alias_map=alias_map
+            )
             all_packages.update(dir_packages)
         except Exception as e:
             print(f"Error scanning Python packages in {scan_dir}: {e}", file=sys.stderr)
     third_party_packages = sorted(all_packages)
 
-    # 构建新 JSON 数据：基于旧数据，更新函数和包列表，保留其他字段（如 pythoPackageIgnore）
+    # 构建新 JSON 数据
     function_dict = {
         info["name"]: {
             "description": info["description"],
@@ -310,17 +368,16 @@ def main():
         }
         for info in new_functions
     }
-    json_data = dict(old_data)          # 复制旧数据
-    json_data["function"] = function_dict
-    json_data["pythonPackage"] = third_party_packages
+    json_data = dict(old_data)          # 复制旧数据，保留其他字段
+    json_data[JSON_FIELD_FUNCTION] = function_dict
+    json_data[JSON_FIELD_PYTHON_PACKAGE] = third_party_packages
+    # 注意：不再写入旧的 pythoPackageIgnore 字段
 
     # 写入 JSON 文件
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(json_data, f, ensure_ascii=False, indent=2)
 
-    # ------------------------------------------------------------------
     # 彩色输出结果
-    # ------------------------------------------------------------------
     GREEN = '\033[92m'
     CYAN = '\033[96m'
     RED = '\033[91m'
@@ -348,28 +405,26 @@ def main():
     print(f"{CYAN}✅ 已重新加载所有函数文件{RESET}")
     print(f"{GREEN}✅ reload完成！{RESET}")
 
-    # ------------------------------------------------------------------
     # 根据系统类型执行不同的后续操作
-    # ------------------------------------------------------------------
     if system_type == 'windows':
-        # 如果指定了 --no-restart，直接退出，不询问
         if args.no_restart:
             print("已跳过终端重启询问（--no-restart 指定）。")
             sys.exit(0)
-        # Windows：询问是否重启终端
-        answer = questionary.select(
-            "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
-            choices=["Yes", "No"]
-        ).ask()
+
+        try:
+            answer = questionary.select(
+                "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
+                choices=["Yes", "No"]
+            ).ask()
+        except KeyboardInterrupt:
+            print("\n用户取消操作。")
+            sys.exit(0)
 
         if answer == "No":
             print("已取消。")
-            sys.exit(0)  # 退出码 0：不关闭窗口
+            sys.exit(0)
 
-        # 用户选择 Yes
         print("\n准备关闭当前窗口...")
-
-        # 检测终端类型并发送组合键
         terminal_type = detect_terminal()
         print(f"检测到当前终端窗口类型：{terminal_type}")
 
@@ -378,29 +433,25 @@ def main():
             time.sleep(2)
             send_vscode_combo()
             print("组合键已发送。")
-        else:  # windows
+        else:
             print("即将发送 Ctrl+Shift+t 到 Windows（恢复已关闭标签页），请确保焦点在浏览器或资源管理器...")
             time.sleep(2)
             send_windows_combo()
             print("组合键已发送。")
 
-        # 退出码 1：通知 PowerShell 关闭窗口
         sys.exit(1)
 
     elif system_type == 'mac':
-        # macOS：如果有删除的方法，且环境变量 RELOADSH_REMOVED_FILE 已设置，则写入临时文件
         if (added or removed) and 'RELOADSH_REMOVED_FILE' in os.environ:
             removed_file = os.environ['RELOADSH_REMOVED_FILE']
             try:
                 with open(removed_file, 'w', encoding='utf-8') as f:
                     for func in removed:
                         f.write(func + '\n')
-                # 返回特殊退出码 42 通知上层执行 unfunction 和 source
                 sys.exit(42)
             except Exception as e:
                 print(f"{RED}❌ 写入删除函数列表到文件失败: {e}{RESET}", file=sys.stderr)
                 sys.exit(1)
-        # 没有删除函数或环境变量未设置，正常退出
         print(f"\n{GREEN}✅ 如未更新请执行：source ~/.zshrc{RESET}")
         sys.exit(0)
 

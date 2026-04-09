@@ -7,14 +7,32 @@ cd.py - 通用目录跳转脚本
 """
 
 import os
+if os.name == 'nt' and 'WT_SESSION' not in os.environ:
+    YELLOW = RESET = ''   # Windows 经典终端且不是 Windows Terminal 时禁用颜色
 import sys
 import json
 import platform
 from pathlib import Path
+import subprocess
 
 # ANSI 颜色代码（macOS 终端同样支持）
 YELLOW = '\033[93m'
 RESET = '\033[0m'
+
+def setup_utf8_console():
+    if platform.system() != "Windows":
+        return
+    try:
+        # 切换控制台代码页为 UTF-8
+        subprocess.run("chcp 65001", shell=True, check=False, capture_output=True)
+        # 强制 Python 输出使用 UTF-8
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding='utf-8')
+        else:
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    except Exception:
+        pass
 
 def get_config_path():
     """返回配置文件路径，优先使用环境变量 MYSHELL"""
@@ -49,10 +67,11 @@ def show_help(config):
         if val.get('win') or val.get('mac'):
             display_name = key.replace('_', '-')
             desc = val.get('description', '')
-            lines.append(f"  {YELLOW}{display_name:<{max_len}}{RESET} - {desc}")
+            lines.append(f"  {YELLOW}{display_name:<{max_len}}{RESET} # {desc}")
     return "\n".join(lines)
 
 def main():
+    setup_utf8_console()
     # 无参数或空参数 -> 显示帮助
     if len(sys.argv) < 2 or not sys.argv[1]:
         config_path = get_config_path()
