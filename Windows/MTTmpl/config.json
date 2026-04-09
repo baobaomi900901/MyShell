@@ -1,0 +1,19 @@
+{
+  "fun1": {
+    "script_path": "@MYSHELL\\public\\_script\\fun1.py",
+    "description": "这是我的第一个方法",
+    "ignore_exit_code": true
+  },
+  "fun2": {
+    "script_path": ".\\src\\fun2.js",
+    "description": "这是我的第二个方法"
+  },
+  "fun3": {
+    "script_path": ".\\src\\fun3.ps1",
+    "description": "这是我的第三个方法"
+  },
+  "fun4": {
+    "script_path": "@MYSHELL\\public\\_script\\fun4.ps1",
+    "description": "这是我的第4个方法"
+  }
+}

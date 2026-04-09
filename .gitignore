@@ -1,0 +1,7 @@
+MacOS/function_tracker.json
+config/private/*
+temp/*
+test/*
+public/lite_setup/assets/*
+public/lite_setup/plugin/*
+*.pyc

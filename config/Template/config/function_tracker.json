@@ -1,0 +1,10 @@
+{
+  "function": {
+    "Get-CustomConfig": {
+      "description": "",
+      "file": "C:\\Users\\mobytang\\Documents\\WindowsPowerShell\\MyShell\\windows\\MTGeneral\\general.ps1"
+    }
+  },
+  "pythonPackage": ["keyboard", "pyperclip", "pywin32", "questionary", "uiautomation"],
+  "pythoPackageIgnore": ["convert_arg"]
+}
