@@ -182,7 +182,7 @@ function new_ {
     }
 }
 
-function cl {
+function cls {
     # 用途: 清空终端信息
     Clear
 }
