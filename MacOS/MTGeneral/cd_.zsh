@@ -1,65 +1,45 @@
-# 快速目录跳转函数（调用 cd.py）
+# cd_ 函数 for macOS / Linux (zsh)
 cd_() {
-    # 用途: 跳转到指定目录
-    local action="$1"
-
+    # 检查环境变量 MYSHELL 是否设置
     if [[ -z "$MYSHELL" ]]; then
-        echo -e "\033[91m❌ 环境变量 MYSHELL 未设置，无法定位 Python 脚本\033[0m" >&2
+        echo "❌ 环境变量 MYSHELL 未设置" >&2
         return 1
     fi
 
-    local script_path="$MYSHELL/public/_script/cd.py"
+    local py_script="$MYSHELL/public/_script/cd.py"
+    local config_path="$MYSHELL/config/private/path.json"
 
-    if [[ ! -f "$script_path" ]]; then
-        echo -e "\033[91m❌ 找不到 Python 脚本: $script_path\033[0m" >&2
+    if [[ ! -f "$py_script" ]]; then
+        echo "❌ 找不到 Python 脚本: $py_script" >&2
         return 1
     fi
 
-    echo ""
+    # 生成临时文件
+    local temp_file=$(mktemp)
 
-    local output
-    output=$(python3 "$script_path" "$action" 2>&1)   # 确保使用 python3
+    # 调用 Python 交互脚本
+    python3 "$py_script" "$config_path" "$temp_file"
+    local exit_code=$?
 
-    if [[ -z "$output" ]]; then
-        return
-    fi
+    # 读取目标路径
+    local target_path
+    if [[ $exit_code -eq 0 && -s "$temp_file" ]]; then
+        target_path=$(<"$temp_file")
+        rm -f "$temp_file"
 
-    if [[ "$output" == cd\ * ]]; then
-        eval "$output"
+        if [[ -n "$target_path" && -d "$target_path" ]]; then
+            cd "$target_path" || return 1
+            echo "👉 已跳转到: $target_path"
+        else
+            echo "❌ 目标路径不存在或不是目录: $target_path" >&2
+            return 1
+        fi
     else
-        echo "$output"
-    fi
-
-    echo ""
-}
-
-_cd_completion() {
-    local config_file="$HOME/MyShell/config/private/path.json"
-    
-    if [[ ! -f "$config_file" ]]; then
+        rm -f "$temp_file"
+        # Python 脚本已经输出了错误信息，这里可额外提示退出码
+        if [[ $exit_code -ne 0 ]]; then
+            echo "❌ 操作已取消或出错 (退出码: $exit_code)" >&2
+        fi
         return 1
     fi
-    
-    # 检查是否安装了 jq
-    if ! command -v jq &> /dev/null; then
-        return 1
-    fi
-    
-    local -a options=()
-    
-    # 使用 jq 获取所有 macOS 可用的路径
-    local keys=($(jq -r 'to_entries[] | select(.value.mac != null) | .key' "$config_file" 2>/dev/null))
-    
-    for key in "${keys[@]}"; do
-        local desc=$(jq -r ".[\"$key\"].description" "$config_file")
-        # 将内部的下划线键名转换回用户友好的连字符格式
-        local display_name="${key//_/-}"
-        # 只使用显示名称，不要包含描述（避免重复显示）
-        options+=("$display_name")
-    done
-    
-    _describe 'cd_ options' options
 }
-
-# 将补全函数关联到 cd_ 命令
-compdef _cd_completion cd_

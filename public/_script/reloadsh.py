@@ -317,6 +317,9 @@ def main() -> None:
         for ext in script_extensions:
             script_files = sorted(scan_dir.rglob(f'*{ext}'))
             for script_file in script_files:
+                # 跳过 Expired 目录及其子目录下的所有文件
+                if any(excluded in script_file.parts for excluded in ['Expired']):
+                    continue
                 new_function_infos.extend(find_functions_in_file(script_file))
 
     # 去重（同名函数保留首次扫描到的描述和文件）

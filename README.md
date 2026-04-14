@@ -11,8 +11,12 @@
    - 在终端中执行 'cd ~'
 2. 在 .zshrc 中添加以下内容
    ```shell
-   for func_file in ~/MyShell/MacOS/*.zsh; do
-      source "$func_file"
+   for func_file in ~/MyShell/MacOS/**/*.zsh(N); do
+   # 如果路径中包含 /Expired/ 则跳过
+   if [[ "$func_file" == *"/Expired/"* ]]; then
+      continue
+   fi
+   source "$func_file"
    done
    ```
 3. 在终端中运行, 使配置生效 ( 此命令用于 reload 脚本)

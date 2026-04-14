@@ -1,67 +1,50 @@
-# ========== code_ 函数 ==========
-# 功能：根据配置文件快速在 VS Code 中打开项目
-# 依赖：$MYSHELL 环境变量指向 MyShell 根目录
-#       Python3 脚本位于 $MYSHELL/public/_script/vscode_open.py
-#       配置文件位于 $MYSHELL/config/private/path_code.json
-
+# code_ 函数 for macOS / Linux (zsh)
 code_() {
-    # 用途: vscode 打开指定文件
-    local name="$1"
-    local script="${MYSHELL}/public/_script/vscode_open.py"
-    local output exit_code
-
-    # 检查 Python 脚本是否存在
-    if [[ ! -f "$script" ]]; then
-        print -P "%F{red}❌ Python 脚本不存在: $script%f"
+    # 检查环境变量 MYSHELL 是否设置
+    if [[ -z "$MYSHELL" ]]; then
+        echo "❌ 环境变量 MYSHELL 未设置" >&2
         return 1
     fi
 
-    # 调用 Python3 脚本，捕获输出和退出码
-    output=$(python3 "$script" "$name" 2>&1)
-    exit_code=$?
+    local py_script="$MYSHELL/public/_script/vscode.py"
+    local config_path="$MYSHELL/config/private/path_code.json"
 
-    # 根据退出码处理
-    if [[ $exit_code -eq 0 ]]; then
-        # 成功：如果输出以 "code " 开头则执行，否则直接显示
-        if [[ "$output" =~ ^code\  ]]; then
-            eval "$output"
+    if [[ ! -f "$py_script" ]]; then
+        echo "❌ 找不到 Python 脚本: $py_script" >&2
+        return 1
+    fi
+
+    # 生成临时文件
+    local temp_file=$(mktemp)
+
+    # 调用 Python 交互脚本
+    python3 "$py_script" "$config_path" "$temp_file"
+    local exit_code=$?
+
+    # 读取目标路径
+    local target_path
+    if [[ $exit_code -eq 0 && -s "$temp_file" ]]; then
+        target_path=$(<"$temp_file")
+        rm -f "$temp_file"
+
+        if [[ -n "$target_path" ]]; then
+            # 检查目标是否存在（code 命令可以打开不存在的文件/目录，但此处给出提示）
+            if [[ -e "$target_path" ]]; then
+                code "$target_path"
+                echo "👉 已在 VS Code 中打开: $target_path"
+            else
+                echo "⚠️ 目标路径不存在，但尝试用 VS Code 打开: $target_path"
+                code "$target_path"
+            fi
         else
-            print "$output"
+            echo "❌ 未选择任何项目" >&2
+            return 1
         fi
     else
-        # 失败：红色显示错误信息
-        print -P "%F{red}${output}%f"
+        rm -f "$temp_file"
+        if [[ $exit_code -ne 0 ]]; then
+            echo "❌ 操作已取消或出错 (退出码: $exit_code)" >&2
+        fi
+        return 1
     fi
-    print ""  # 空行分隔
 }
-
-# ========== 补全配置 ==========
-# 补全函数：读取 path_code.json，生成“名称:描述”列表
-_code_completion() {
-    local json_file="${MYSHELL}/config/private/path_code.json"
-    local -a suggestions
-
-    # 如果 JSON 文件不存在，直接返回
-    [[ -f "$json_file" ]] || return 1
-
-    # 使用 Python3 解析 JSON，输出每行 "名称:描述"
-    suggestions=(${(f)"$(python3 -c "
-import sys, json
-try:
-    with open('$json_file', 'r', encoding='utf-8-sig') as f:
-        data = json.load(f)
-except:
-    sys.exit(1)
-for key, val in data.items():
-    if val.get('win') or val.get('mac'):   # 至少在一个系统上有路径
-        name = key.replace('_', '-')
-        desc = val.get('description', '').replace('\n', ' ')
-        print(f'{name}:{desc}')
-")"})
-
-    # 将列表提供给 _describe 进行补全（自动过滤已输入部分）
-    _describe -t 'code projects' 'VS Code project' suggestions
-}
-
-# 注册补全函数到命令 code_
-compdef _code_completion code_
