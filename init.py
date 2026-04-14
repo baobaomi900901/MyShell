@@ -127,11 +127,13 @@ if current_system == System.WINDOWS:
     profile_file = os.path.join(ps_folder, "Microsoft.PowerShell_profile.ps1")
     os.makedirs(ps_folder, exist_ok=True)
 
-    core_block = r"""$functionsDir = "$PSScriptRoot\MyShell\windows"
+    core_block = r"""$functionsDir = "$HOME\Documents\WindowsPowerShell\MyShell\windows"
 if (Test-Path $functionsDir) {
-    Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File | ForEach-Object {
-        . $_.FullName
-    }
+    Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File |
+        Where-Object { $_.FullName -notmatch '\\Expired\\' } |
+        ForEach-Object {
+            . $_.FullName
+        }
 }
 Import-Module PSReadLine"""
 
@@ -334,6 +336,10 @@ elif current_system == System.MACOS:
 
     # 3. 判断并添加 shell 递归循环块
     loop_block = """for func_file in ~/MyShell/MacOS/**/*.zsh(N); do
+  # 如果路径中包含 /Expired/ 则跳过
+  if [[ "$func_file" == *"/Expired/"* ]]; then
+    continue
+  fi
   source "$func_file"
 done
 zstyle ':completion:*' menu select=1"""

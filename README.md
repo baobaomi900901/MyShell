@@ -37,18 +37,16 @@
 3.  在 Microsoft.PowerShell_profile.ps1 中添加以下内容
 
 ```shell
+   # C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 
-# C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
-
-$functionsDir = "$HOME\Documents\WindowsPowerShell\MyShell\windows"
-if (Test-Path $functionsDir) {
-    Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File |
-        Where-Object { $_.FullName -notmatch '\\Expired\\' } |
-        ForEach-Object {
-            . $_.FullName
-        }
-}
-
+   $functionsDir = "$HOME\Documents\WindowsPowerShell\MyShell\windows"
+   if (Test-Path $functionsDir) {
+      Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File |
+         Where-Object { $_.FullName -notmatch '\\Expired\\' } |
+         ForEach-Object {
+               . $_.FullName
+         }
+   }
 ```
 
 4.  终端运行命令, 使配置生效 ( 此命令用于 reload 脚本)
