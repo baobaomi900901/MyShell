@@ -38,9 +38,9 @@
 
 ```shell
 
-C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+# C:\Users\{用户名}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 
-$functionsDir = "$PSScriptRoot\MyShell\windows"
+$functionsDir = "$HOME\Documents\WindowsPowerShell\MyShell\windows"
 if (Test-Path $functionsDir) {
     Get-ChildItem -Path $functionsDir -Recurse -Filter *.ps1 -File |
         Where-Object { $_.FullName -notmatch '\\Expired\\' } |

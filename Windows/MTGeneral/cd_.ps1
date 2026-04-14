@@ -1,6 +1,11 @@
 ﻿# Windows/MTGeneral/cd_.ps1
 
 function cd_ {
+    param(
+        [Parameter(Position=0)]
+        [string]$Query = ""
+    )
+
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
@@ -20,7 +25,7 @@ function cd_ {
 
     try {
         # 2. 调用 Python，传入 配置文件路径 和 临时文件路径
-        python $pyScript $configPath $tempFile
+        python $pyScript $configPath $tempFile $Query
         
         # 3. 读取临时文件中的路径
         $targetPath = Get-Content -Path $tempFile -Raw
@@ -41,5 +46,46 @@ function cd_ {
         if (Test-Path $tempFile) {
             Remove-Item -Path $tempFile -Force
         }
+    }
+}
+
+# Tab 补全功能（保持不变）
+Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
+    if ($env:MYSHELL) {
+        $configFile = Join-Path $env:MYSHELL "config\private\path.json"
+    } else {
+        $userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath('UserProfile') }
+        $configFile = Join-Path $userProfile "Documents\WindowsPowerShell\MyShell\config\private\path.json"
+    }
+
+    if (-not (Test-Path $configFile)) {
+        return
+    }
+
+    try {
+        $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
+
+        $completionItems = $config.PSObject.Properties | Where-Object {
+            $_.Value.win -or $_.Value.mac
+        } | ForEach-Object {
+            $displayName = $_.Name -replace '_', '-'
+            $description = $_.Value.description -replace "`n", " "
+            [System.Management.Automation.CompletionResult]::new(
+                $displayName,
+                $displayName,
+                'ParameterValue',
+                $description
+            )
+        }
+
+        $completionItems | Where-Object {
+            $_.CompletionText -like "$wordToComplete*"
+        }
+
+    } catch {
+        return
     }
 }
