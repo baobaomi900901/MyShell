@@ -1,91 +1,45 @@
-﻿function cd_ {
-    # 用途: 用于 cd 到指定目录
-    param (
-        [Parameter(Position = 0)]
-        [string]$action
-    )
-    
-    # 检查环境变量 MYSHELL 是否设置
+﻿# Windows/MTGeneral/cd_.ps1
+
+function cd_ {
     $myshell = $env:MYSHELL
     if (-not $myshell) {
-        Write-Host "❌ 环境变量 MYSHELL 未设置，无法定位 Python 脚本" -ForegroundColor Red
+        Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
         return
     }
     
-    # 构建脚本路径：$myshell\public\_script\cd.py
-    $scriptPath = Join-Path $myshell "public"
-    $scriptPath = Join-Path $scriptPath "_script"
-    $scriptPath = Join-Path $scriptPath "cd.py"
+    $pyScript = Join-Path $myshell "public\_script\cd.py"
+    $configPath = Join-Path $myshell "config\private\path.json"
 
-    if (-not (Test-Path $scriptPath)) {
-        Write-Host "❌ 找不到 Python 脚本: $scriptPath" -ForegroundColor Red
+    if (-not (Test-Path $pyScript)) {
+        Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
         return
     }
 
-    Write-Host ""
-
-    # 调用 Python 脚本，将用户输入作为参数传递（不隐藏错误输出）
-    $output = & python $scriptPath $action 2>&1
-
-    # 检查输出是否为空
-    if (-not $output) {
-        return
-    }
-
-    # 将输出转换为字符串（如果是数组，则用换行连接）
-    if ($output -is [array]) {
-        $outputString = $output -join "`r`n"
-    } else {
-        $outputString = $output
-    }
-
-    # 如果输出以 "Set-Location" 开头，则执行该命令
-    if ($outputString -match '^Set-Location') {
-        Invoke-Expression $outputString
-    } else {
-        # 否则直接打印输出（帮助信息或错误信息）
-        Write-Host $outputString
-    }
-    Write-Host ""
-}
-
-# Tab 补全功能（保持不变）
-Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
-    param($wordToComplete, $commandAst, $cursorPosition)
-
-    # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
-    if ($env:MYSHELL) {
-        $configFile = Join-Path $env:MYSHELL "config\private\path.json"
-    } else {
-        $userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath('UserProfile') }
-        $configFile = Join-Path $userProfile "Documents\WindowsPowerShell\MyShell\config\private\path.json"
-    }
-
-    if (-not (Test-Path $configFile)) {
-        return
-    }
+    # 1. 生成一个临时文件路径用于进程间通信
+    $tempFile = [System.IO.Path]::GetTempFileName()
 
     try {
-        $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
-
-        $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.win -or $_.Value.mac
-        } | ForEach-Object {
-            $displayName = $_.Name -replace '_', '-'
-            $description = $_.Value.description -replace "`n", " "
-            [System.Management.Automation.CompletionResult]::new(
-                $displayName,
-                $displayName,
-                'ParameterValue',
-                $description
-            )
+        # 2. 调用 Python，传入 配置文件路径 和 临时文件路径
+        python $pyScript $configPath $tempFile
+        
+        # 3. 读取临时文件中的路径
+        $targetPath = Get-Content -Path $tempFile -Raw
+        
+        if (-not [string]::IsNullOrWhiteSpace($targetPath)) {
+            $targetPath = $targetPath.Trim()
+            
+            # 4. 执行真正的 cd 切换操作
+            if (Test-Path $targetPath) {
+                Set-Location -Path $targetPath
+                # Write-Host "👉 已跳转到: $targetPath" -ForegroundColor Cyan
+            } else {
+                Write-Host "❌ 目标路径不存在: $targetPath" -ForegroundColor Red
+            }
         }
-
-        $completionItems | Where-Object {
-            $_.CompletionText -like "$wordToComplete*"
+    } finally {
+        # 5. 无论如何，最后清理临时文件
+        if (Test-Path $tempFile) {
+            Remove-Item -Path $tempFile -Force
         }
-
-    } catch {
-        return
     }
 }

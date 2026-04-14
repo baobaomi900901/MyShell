@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-# public/_script/cd.py
+# public/_script/pw.py
 
 import sys
 import json
 import os
-import platform
 
-# 颜色支持
+# 尝试导入 colorama 以获得跨平台颜色支持，没有则使用原始 ANSI 码
 try:
     from colorama import init, Fore, Style
     init(autoreset=True)
@@ -15,6 +14,7 @@ try:
     DARK_GRAY = Fore.LIGHTBLACK_EX
     RESET = Style.RESET_ALL
 except ImportError:
+    # 回退到 ANSI 转义码
     RED = '\033[91m'
     YELLOW = '\033[93m'
     DARK_GRAY = '\033[90m'
@@ -22,18 +22,16 @@ except ImportError:
 
 try:
     import questionary
-    from questionary import Style
+    from questionary import Style as QStyle
 except ImportError:
     sys.stderr.write("请先安装 questionary：pip install questionary\n")
     sys.exit(1)
 
-# 配置文件模板
 CONFIG_TEMPLATE = '''{
-    "MyShell": {
-        "win": "C:\\\\Users\\\\YourUsername\\\\Documents\\\\WindowsPowerShell\\\\MyShell",
-        "mac": "/Users/YourUsername/MyShell",
-        "description": "MyShell 配置目录"
-    }
+  "lite-root": {
+    "password": "123",
+    "description": "lite 服务器 root 密码"
+  }
 }'''
 
 
@@ -58,32 +56,24 @@ def main():
         print(f"{RED}❌ JSON 解析失败: {e}{RESET}")
         sys.exit(1)
 
-    system = platform.system()
-    os_type = "win" if system == "Windows" else ("mac" if system == "Darwin" else "unknown")
-
-    # 格式化菜单：只显示当前系统有配置且路径存在的项目
     max_key_len = max(len(key) for key in data.keys())
     choices = []
-    valid_targets = {}
+    key_to_password = {}
 
     for key, value in data.items():
-        raw_path = value.get(os_type)
-        if not raw_path:
+        password = value.get("password")
+        if password is None:
             continue
-        expanded = os.path.expanduser(raw_path)
-        # 检查路径是否存在（cd 命令需要存在的目录）
-        if not os.path.exists(expanded):
-            continue
-        valid_targets[key] = expanded
         desc = value.get("description", "")
         display_text = f"{key:<{max_key_len}}  # {desc}".rstrip()
         choices.append(display_text)
+        key_to_password[key] = password
 
     if not choices:
-        print(f"{RED}❌ 当前系统 ({os_type}) 下没有可用的目录配置。{RESET}")
+        print(f"{RED}❌ 配置文件中没有可用的密码项。{RESET}")
         sys.exit(1)
 
-    custom_style = Style([
+    custom_style = QStyle([
         ('qmark', 'fg:#5F819D bold'),
         ('question', 'bold'),
         ('instruction', 'fg:#808080'),
@@ -92,7 +82,7 @@ def main():
     ])
 
     selected = questionary.select(
-        "请选择你要跳转的目录:",
+        "请选择要复制的密码:",
         choices=choices,
         instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)",
         style=custom_style
@@ -102,15 +92,15 @@ def main():
         sys.exit(0)
 
     selected_key = selected.split()[0]
-    target_path = valid_targets.get(selected_key)
+    password = key_to_password.get(selected_key)
 
-    if not target_path:
-        print(f"{RED}❌ 未找到该系统的路径配置{RESET}")
+    if not password:
+        print(f"{RED}❌ 内部错误：无法获取密码{RESET}")
         sys.exit(1)
 
     try:
         with open(out_file, 'w', encoding='utf-8') as f:
-            f.write(target_path)
+            f.write(password)
     except Exception as e:
         print(f"{RED}❌ 写入临时文件失败: {e}{RESET}")
         sys.exit(1)

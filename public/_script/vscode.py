@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# public/_script/cd.py
+# public/_script/vscode.py
 
 import sys
 import json
 import os
 import platform
 
-# 颜色支持
+# 颜色支持（与 pw.py 保持一致）
 try:
     from colorama import init, Fore, Style
     init(autoreset=True)
@@ -29,11 +29,15 @@ except ImportError:
 
 # 配置文件模板
 CONFIG_TEMPLATE = '''{
-    "MyShell": {
-        "win": "C:\\\\Users\\\\YourUsername\\\\Documents\\\\WindowsPowerShell\\\\MyShell",
-        "mac": "/Users/YourUsername/MyShell",
-        "description": "MyShell 配置目录"
-    }
+  "ShIndex": {
+    "win": "C:\\\\Users\\\\mobytang\\\\Documents\\\\WindowsPowerShell\\\\Microsoft.PowerShell_profile.ps1",
+    "mac": "/Users/mobytang/.zshrc",
+    "description": "打开 sh 入口文件"
+  },
+  "Documents": {
+    "win": "C:\\\\Users\\\\mobytang\\\\Documents",
+    "description": "Documents"
+  }
 }'''
 
 
@@ -61,26 +65,24 @@ def main():
     system = platform.system()
     os_type = "win" if system == "Windows" else ("mac" if system == "Darwin" else "unknown")
 
-    # 格式化菜单：只显示当前系统有配置且路径存在的项目
+    # 格式化菜单：只显示当前系统有配置的项目
     max_key_len = max(len(key) for key in data.keys())
     choices = []
-    valid_targets = {}
+    valid_targets = {}  # 记录 key -> 实际路径的映射
 
     for key, value in data.items():
         raw_path = value.get(os_type)
         if not raw_path:
-            continue
+            continue   # 当前系统无配置，跳过
         expanded = os.path.expanduser(raw_path)
-        # 检查路径是否存在（cd 命令需要存在的目录）
-        if not os.path.exists(expanded):
-            continue
+        # 不检查路径是否存在，因为可能是尚未创建的文件夹，但 code 命令仍可打开
         valid_targets[key] = expanded
         desc = value.get("description", "")
         display_text = f"{key:<{max_key_len}}  # {desc}".rstrip()
         choices.append(display_text)
 
     if not choices:
-        print(f"{RED}❌ 当前系统 ({os_type}) 下没有可用的目录配置。{RESET}")
+        print(f"{RED}❌ 当前系统 ({os_type}) 下没有可用的项目配置。{RESET}")
         sys.exit(1)
 
     custom_style = Style([
@@ -92,20 +94,20 @@ def main():
     ])
 
     selected = questionary.select(
-        "请选择你要跳转的目录:",
+        "请选择要用 VS Code 打开的项目:",
         choices=choices,
         instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)",
         style=custom_style
     ).ask()
 
     if selected is None:
-        sys.exit(0)
+        sys.exit(0)  # 用户取消
 
     selected_key = selected.split()[0]
     target_path = valid_targets.get(selected_key)
 
     if not target_path:
-        print(f"{RED}❌ 未找到该系统的路径配置{RESET}")
+        print(f"{RED}❌ 内部错误：无法获取路径{RESET}")
         sys.exit(1)
 
     try:
