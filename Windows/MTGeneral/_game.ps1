@@ -1,7 +1,7 @@
 ﻿# .\Windows\MTGame\index.ps1
 # 游戏存档备份管理函数（支持 UTF-8 配置文件）
 
-function game_ {
+function _game {
     # 用途: 游戏存档备份管理工具
     param (
         [Parameter(Position = 0)]

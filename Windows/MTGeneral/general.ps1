@@ -6,7 +6,7 @@ function setsh {
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
 
-function type_ {
+function _type {
     # 用途: 查看方法是否存在, type_ {方法名}
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
@@ -22,7 +22,7 @@ function type_ {
     }
 }
 
-function op_ {
+function _op {
     # 用途: 文件夹中打开当前路径
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
@@ -69,7 +69,7 @@ function op_ {
     }
 }
 
-function now_ {
+function _now {
     # 用途: 显示当前时间
     param(
         [string]$format = "default"
@@ -95,7 +95,7 @@ function now_ {
     Write-Host "✅ 时间已复制到剪贴板" -ForegroundColor Cyan
 }
 
-function new_ {
+function _new {
     # 用途: 新建文件夹或文件
     param(
         [Parameter(Mandatory=$true)]
@@ -181,14 +181,6 @@ function new_ {
         }
     }
 }
-
-function cls {
-    # 用途: 清空终端信息
-    Clear
-}
-
-
-
 
 # 公共方法区域
 

@@ -1,11 +1,7 @@
 ﻿# Windows/MTGeneral/pw_.ps1
 
-function pw_ {
-    param(
-        [Parameter(Position=0)]
-        [string]$Query = ""
-    )
-
+function _pw {
+    # 用途: 将选择的密码复制到剪切板
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red

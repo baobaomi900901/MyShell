@@ -1,11 +1,7 @@
 ﻿# Windows/MTGeneral/cd_.ps1
 
-function cd_ {
-    param(
-        [Parameter(Position=0)]
-        [string]$Query = ""
-    )
-
+function _cd {
+    # 用途: cd 到指定目录
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red

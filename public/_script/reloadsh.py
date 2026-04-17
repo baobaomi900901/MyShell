@@ -78,7 +78,7 @@ def _extract_functions_from_lines(
             match = re.search(pattern, line)
             if match:
                 func_name = match.group(1)
-                if func_name.startswith('_'):
+                if func_name.startswith('__'):
                     continue
                 # 查找描述
                 desc = ""

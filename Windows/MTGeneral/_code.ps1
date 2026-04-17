@@ -1,11 +1,7 @@
 ﻿# Windows/MTGeneral/code_.ps1
 
-function code_ {
-    param(
-        [Parameter(Position=0)]
-        [string]$Query = ""
-    )
-
+function _code {
+    # 用途: 用vscode 打开指定 文件 或 目录
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
