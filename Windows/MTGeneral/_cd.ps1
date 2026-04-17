@@ -46,7 +46,7 @@ function _cd {
 }
 
 # Tab 补全功能（保持不变）
-Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
+Register-ArgumentCompleter -CommandName _cd -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）

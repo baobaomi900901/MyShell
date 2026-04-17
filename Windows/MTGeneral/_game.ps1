@@ -138,7 +138,7 @@ function _game {
 }
 
 # Tab 补全功能（同样使用 UTF-8 读取配置）
-Register-ArgumentCompleter -CommandName game_ -ScriptBlock {
+Register-ArgumentCompleter -CommandName _game -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"

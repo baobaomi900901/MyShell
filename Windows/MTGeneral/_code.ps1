@@ -41,7 +41,7 @@ function _code {
 }
 
 # 注册 Tab 补全（保持之前正确的实现）
-Register-ArgumentCompleter -CommandName code_ -ScriptBlock {
+Register-ArgumentCompleter -CommandName _code -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）

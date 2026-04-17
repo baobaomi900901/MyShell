@@ -1,7 +1,8 @@
-﻿# Windows/MTGeneral/pw_.ps1
+﻿# Windows/MTGeneral/_pw.ps1
 
 function _pw {
-    # 用途: 将选择的密码复制到剪切板
+    param([string]$Query)   # 必须添加
+
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
@@ -19,14 +20,24 @@ function _pw {
     $tempFile = [System.IO.Path]::GetTempFileName()
 
     try {
-        python $pyScript $configPath $tempFile $Query
+        if ($Query) {
+            python $pyScript $configPath $tempFile $Query
+        } else {
+            python $pyScript $configPath $tempFile
+        }
         
-        $password = Get-Content -Path $tempFile -Raw
+        # 关键：非零退出码表示取消或错误，直接返回
+        if ($LASTEXITCODE -ne 0) {
+            return
+        }
         
+        $password = Get-Content -Path $tempFile -Raw -ErrorAction SilentlyContinue
         if (-not [string]::IsNullOrWhiteSpace($password)) {
             $password = $password.Trim()
             Set-Clipboard -Value $password
             Write-Host "✅ 密码已复制到剪贴板" -ForegroundColor Green
+        } else {
+            Write-Host "❌ 未获取到密码" -ForegroundColor Red
         }
     } finally {
         if (Test-Path $tempFile) {
@@ -35,8 +46,8 @@ function _pw {
     }
 }
 
-# Tab 补全（保持原有逻辑，但确保配置文件读取编码正确）
-Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
+# Tab 补全（保持不变）
+Register-ArgumentCompleter -CommandName _pw -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
     $configFile = Join-Path $env:MYSHELL "config\private\password.json"
@@ -46,7 +57,6 @@ Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
     }
     
     try {
-        # 指定 UTF8 编码读取
         $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
         $config = $raw | ConvertFrom-Json
         
