@@ -17,13 +17,6 @@ except ImportError:
     print("缺少 questionary 模块，请执行 pip install questionary")
     sys.exit(10)
 
-
-try:
-    import keyboard
-except ImportError:
-    print("缺少 keyboard 模块，请执行 pip install keyboard")
-    sys.exit(10)
-
 # ----------------------------------------------------------------------
 # 常量定义
 # ----------------------------------------------------------------------
@@ -235,7 +228,12 @@ def detect_terminal() -> str:
     return "vscode" if os.environ.get('TERM_PROGRAM') == 'vscode' else "windows"
 
 def send_combo(keys: List[str]) -> None:
-    """按下并释放组合键"""
+    """按下并释放组合键（仅 Windows 终端重启流程使用，延迟导入 keyboard）"""
+    try:
+        import keyboard
+    except ImportError:
+        print("缺少 keyboard 模块，请执行 pip install keyboard", file=sys.stderr)
+        sys.exit(10)
     for key in keys:
         keyboard.press(key)
     time.sleep(0.05)
@@ -426,6 +424,9 @@ def main() -> None:
         if answer == "No":
             print("已取消。")
             sys.exit(0)
+        if answer != "Yes":
+            print("已取消（未选择 Yes）。")
+            sys.exit(0)
 
         print("\n准备关闭当前窗口...")
         terminal_type = detect_terminal()
@@ -445,7 +446,8 @@ def main() -> None:
         sys.exit(1)
 
     elif system_type == 'mac':
-        if (added or removed) and 'RELOADSH_REMOVED_FILE' in os.environ:
+        # 退出码 42 仅在有「待卸载函数名」时交给 reloadsh.zsh 写临时文件并 unfunction，再 source ~/.zshrc
+        if removed and 'RELOADSH_REMOVED_FILE' in os.environ:
             removed_file = os.environ['RELOADSH_REMOVED_FILE']
             try:
                 with open(removed_file, 'w', encoding='utf-8') as f:
