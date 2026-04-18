@@ -1,5 +1,5 @@
 # code_ 函数 for macOS / Linux (zsh)
-code_() {
+_code() {
     # 检查环境变量 MYSHELL 是否设置
     if [[ -z "$MYSHELL" ]]; then
         echo "❌ 环境变量 MYSHELL 未设置" >&2
