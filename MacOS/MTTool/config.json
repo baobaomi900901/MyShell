@@ -1,6 +1,6 @@
 {
   "clean-image": {
-    "script_path": "@MYSHELL/public/_script/cleanUnusedImages.js",
+    "script_path": "@MYSHELL/public/_script/clean_unused_images.py",
     "description": "清理指定路径下md文档中没有被引用的图片资源; \r\n 默认路径为当前目录"
   }
 }

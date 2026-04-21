@@ -48,7 +48,7 @@ async function main() {
 
     await reportResults(unusedImages, targetPath);
 
-    const shouldDelete = await askConfirmation(`确定要删除 ${unusedImages.length} 个未使用的图片文件吗? (y/n)`);
+    const shouldDelete = await askConfirmation(`确定要删除 ${unusedImages.length} 个未使用的图片文件吗? (y/N)`);
     if (shouldDelete) {
       await deleteUnusedImages(unusedImages, targetPath);
     }
@@ -126,6 +126,15 @@ async function findUsedImages(filePaths) {
   return usedImages;
 }
 
+// Markdown ![](<path with spaces>) 会包尖括号，需去掉再拼路径
+function stripAngleBrackets(p) {
+  let s = String(p).trim();
+  if (s.length >= 2 && s.startsWith('<') && s.endsWith('>')) {
+    return s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 // 查找图片引用(支持Markdown和HTML)
 function findImageReferences(content) {
   const patterns = [
@@ -139,8 +148,8 @@ function findImageReferences(content) {
   patterns.forEach((pattern) => {
     let match;
     while ((match = pattern.exec(content)) !== null) {
-      // 移除查询参数和哈希
-      const cleanPath = match[1].split(/[?#]/)[0];
+      // 移除查询参数和哈希，并去掉 Markdown 尖括号包裹
+      const cleanPath = stripAngleBrackets(match[1].split(/[?#]/)[0]);
       if (cleanPath && !cleanPath.startsWith('http')) {
         matches.push(cleanPath);
       }
