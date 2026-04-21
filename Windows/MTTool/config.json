@@ -13,7 +13,7 @@
   },
   "license-lite": {
     "script_path": ".\\src\\license_lite.py",
-    "description": "打开 Lite 授权工具并自动完成机器标识输入、生成授权码"
+    "description": "Lite 授权：单个/多个(xlsx D列机器标识→E列授权码，默认从第5行起)；可传 --xlsx 路径"
   },
   "license-rpa": {
     "script_path": ".\\src\\license_rpa.py",

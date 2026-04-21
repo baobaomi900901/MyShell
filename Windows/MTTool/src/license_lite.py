@@ -4,14 +4,18 @@
 license_lite.py - 启动Lite授权工具并自动完成机器标识、授权期限输入，生成授权码。
 
 用法：
-    python license_lite.py [--root] MACHINE_ID
+    python license_lite.py [--root] [--xlsx 路径] [--xlsx-start-row N] [MACHINE_ID]
 
 选项：
-    --root      以 root 模式启动，启动参数从环境变量 MYSHELL 指定的路径下的 config/private/password.json 的 lite-forever.password 读取
-    MACHINE_ID  机器标识字符串
+    --root              以 root 模式启动，启动参数从 MYSHELL/config/private/password.json 的 lite-forever 读取
+    --xlsx PATH         多个授权：从 xlsx 读取 D 列机器标识，生成后写入 E 列授权码（与交互选「多个授权」相同）
+    --xlsx-start-row N  数据起始行号，默认 5（Excel 行号，从 1 起算）
+    MACHINE_ID          单个授权时直接指定机器标识；与 --xlsx 互斥
 
 交互：
-    脚本会提示输入授权期限（格式 YYYY-MM-DD），校验通过后继续。
+    未传 MACHINE_ID 且未传 --xlsx：先选 1 单个 / 2 多个（questionary 菜单）→ 多个时 Windows 优先弹出系统文件框选 xlsx；
+    机器标识、起始行、路径回退均用标准 input（避免 questionary 文本框无法粘贴）。
+    授权期限：直接回车则使用「今天 + 90 天」的 YYYY-MM-DD。
     如果目标窗口已存在，则直接使用现有窗口，不再重复启动程序。
 """
 
@@ -22,7 +26,7 @@ import argparse
 import subprocess
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import win32gui
@@ -268,13 +272,15 @@ def click_generate_button(window):
     print("❌ 所有点击方法均失败")
     return False
 
-def copy_authorization_code_to_clipboard(window):
-    """将授权码结果（ClassName=TMemo）复制到剪贴板"""
+def extract_license_code_from_window(window):
+    """
+    从授权码结果框（TMemo）读取文本，复制到剪贴板。
+    返回授权码字符串；失败返回 None。
+    """
     print("\n正在获取授权码结果...")
     all_controls = window.GetChildren()
     memo_ctrl = None
 
-    # 查找 ClassName=RESULT_CLASS 的编辑框
     for ctrl in all_controls:
         if ctrl.ControlType == auto.ControlType.EditControl:
             try:
@@ -282,27 +288,32 @@ def copy_authorization_code_to_clipboard(window):
                 if class_name == RESULT_CLASS:
                     memo_ctrl = ctrl
                     break
-            except:
+            except Exception:
                 continue
 
     if not memo_ctrl:
         print(f"❌ 未找到授权码结果框（ClassName={RESULT_CLASS}）")
-        return False
+        return None
 
     try:
         value_pattern = memo_ctrl.GetValuePattern()
         code_text = value_pattern.Value
         if code_text:
+            code_text = str(code_text).strip()
             pyperclip.copy(code_text)
             print(f"✅ 已复制授权码到剪贴板，内容长度: {len(code_text)} 字符")
-            print(f"   前50字符: {code_text[:50]}{'...' if len(code_text)>50 else ''}")
-            return True
-        else:
-            print("⚠️ 授权码内容为空，可能尚未生成")
-            return False
+            print(f"   前50字符: {code_text[:50]}{'...' if len(code_text) > 50 else ''}")
+            return code_text
+        print("⚠️ 授权码内容为空，可能尚未生成")
+        return None
     except Exception as e:
         print(f"获取授权码失败: {e}")
-        return False
+        return None
+
+
+def copy_authorization_code_to_clipboard(window):
+    """兼容旧调用：从窗口取授权码并复制到剪贴板，成功返回 True。"""
+    return extract_license_code_from_window(window) is not None
 
 def get_default_exe_path():
     """获取默认的 LiteLicense.exe 路径（支持环境变量覆盖）"""
@@ -332,22 +343,80 @@ def validate_date(date_str):
     except ValueError:
         return False
 
-def main():
-    parser = argparse.ArgumentParser(description="自动完成Lite授权工具的机器标识、授权期限输入和授权码生成")
-    parser.add_argument("--root", action="store_true", help="以 root 模式启动（启动参数从配置文件读取）")
-    parser.add_argument("machine_id", help="机器标识字符串")
-    args = parser.parse_args()
 
-    # 交互式获取授权期限日期
-    print("请输入授权期限（格式 YYYY-MM-DD）：")
+def default_expiry_date_days_from_today(days=90):
+    """返回「今天 + days」的日期字符串 YYYY-MM-DD。"""
+    d = datetime.now().date() + timedelta(days=days)
+    return d.strftime("%Y-%m-%d")
+
+
+def _questionary_available():
+    try:
+        import questionary  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def choose_authorization_mode_interactive():
+    """
+    返回 'single' | 'multi' | None（取消）。
+    优先使用 questionary（与 _tool 菜单一致）；否则回退到 input。
+    """
+    if _questionary_available():
+        import questionary
+        sel = questionary.select(
+            "请选择授权方式：",
+            choices=[
+                "1. 单个授权",
+                "2. 多个授权",
+            ],
+            instruction="(↑/↓ 选择，回车确认，Esc 取消)",
+        ).ask()
+        if sel is None:
+            return None
+        if sel.startswith("1"):
+            return "single"
+        if sel.startswith("2"):
+            return "multi"
+        return None
+
+    print("请选择授权方式：")
+    print("  1. 单个授权")
+    print("  2. 多个授权")
     while True:
-        expiry_date = input("> ").strip()
-        if validate_date(expiry_date):
-            break
-        else:
-            print("日期格式错误或无效，请重新输入（例如 2025-12-31）：")
+        choice = input("请输入 1 或 2: ").strip()
+        if choice == "1":
+            return "single"
+        if choice == "2":
+            return "multi"
+        print("无效输入，请重新输入 1 或 2。")
 
-    # 先检查窗口是否已存在
+
+def prompt_machine_id_single_interactive():
+    """单个授权：读取一行机器标识（使用标准 input，避免 questionary 文本框无法粘贴）。"""
+    print("请输入机器标识（可从客户处获得，支持粘贴后回车）：")
+    return input("> ").strip()
+
+
+def prompt_expiry_date_interactive(default_days=90):
+    default_s = default_expiry_date_days_from_today(default_days)
+    print(
+        f"请输入授权期限（格式 YYYY-MM-DD，直接回车默认：今天起第 {default_days} 天 = {default_s}）："
+    )
+    while True:
+        raw = input("> ").strip()
+        expiry_date = raw if raw else default_s
+        if validate_date(expiry_date):
+            return expiry_date
+        print("日期格式错误或无效，请重新输入（例如 2025-12-31）：")
+
+
+def run_lite_authorization(machine_id, expiry_date, use_root):
+    """
+    对当前（或新启动的）授权窗口完成一次：填机器标识、期限、密码，生成并复制授权码。
+    返回授权码文本；失败时进程内已 print，返回 None（部分路径会 sys.exit）。
+    """
     hwnd = find_window_handle(WINDOW_TITLE)
     if hwnd:
         print(f"✅ 已存在窗口 '{WINDOW_TITLE}'，直接使用现有窗口。")
@@ -357,9 +426,7 @@ def main():
             print(f"错误: 程序文件不存在: {exe_path}", file=sys.stderr)
             sys.exit(1)
 
-        # 根据 root 参数决定启动参数
-        if args.root:
-            # 读取启动参数从密码文件（使用新的路径）
+        if use_root:
             password_file = resolve_password_file()
             if password_file is None or not password_file.exists():
                 print("错误: 密码文件不存在或环境变量 MYSHELL 未设置。", file=sys.stderr)
@@ -374,7 +441,6 @@ def main():
             print("启动 LiteLicense.exe...")
             subprocess.Popen([str(exe_path)])
 
-        # 等待窗口出现
         hwnd = wait_for_window(WINDOW_TITLE)
         if not hwnd:
             print("无法找到授权窗口，退出。", file=sys.stderr)
@@ -389,26 +455,24 @@ def main():
     for eb in edit_boxes:
         print(f"  索引 {eb['index']}: ClassName={eb['class_name']}, IsPassword={eb['is_password']}, IsReadOnly={eb['is_readonly']}, HelpText='{eb['help_text']}', AutomationId={eb['automation_id']}")
 
-    # 定位机器标识框：使用配置的特征
     machine_ctrl = None
     for eb in edit_boxes:
-        if (eb['class_name'] == MACHINE_CLASS 
-                and eb['is_password'] is MACHINE_IS_PASSWORD 
-                and eb['is_readonly'] is MACHINE_IS_READONLY 
+        if (eb['class_name'] == MACHINE_CLASS
+                and eb['is_password'] is MACHINE_IS_PASSWORD
+                and eb['is_readonly'] is MACHINE_IS_READONLY
                 and (eb['help_text'] is None or eb['help_text'] == MACHINE_HELP_TEXT)):
             machine_ctrl = eb['control']
             print(f"\n✅ 找到机器标识框，索引 {eb['index']}")
             break
 
-    # 定位授权期限框：使用配置的关键词
     expiry_ctrl = None
     for eb in edit_boxes:
-        if eb['class_name'] == EXPIRY_CLASS and EXPIRY_HELP_TEXT_KEYWORD in eb['help_text']:
+        help_txt = eb.get('help_text') or ''
+        if eb['class_name'] == EXPIRY_CLASS and EXPIRY_HELP_TEXT_KEYWORD in str(help_txt):
             expiry_ctrl = eb['control']
             print(f"✅ 找到授权期限框，索引 {eb['index']} (HelpText: {eb['help_text']})")
             break
 
-    # 定位密码框：使用配置的特征
     password_ctrl = None
     for eb in edit_boxes:
         if eb['class_name'] == PASSWORD_CLASS and eb['is_password'] is PASSWORD_IS_PASSWORD:
@@ -416,7 +480,6 @@ def main():
             print(f"✅ 找到授权密码框，索引 {eb['index']}")
             break
 
-    # 备用方案（如果 ENABLE_FALLBACK 为 True）
     if ENABLE_FALLBACK:
         if not machine_ctrl:
             candidates = [eb for eb in edit_boxes if eb['class_name'] == MACHINE_CLASS and eb['is_readonly'] is False and eb['is_password'] is False]
@@ -424,13 +487,14 @@ def main():
                 machine_ctrl = candidates[0]['control']
                 print(f"\n⚠️ 使用备用方案，选择第一个可编辑{MACHINE_CLASS}作为机器标识框，索引 {candidates[0]['index']}")
         if not expiry_ctrl:
-            # 尝试根据备用关键词搜索
-            candidates = [eb for eb in edit_boxes if eb['class_name'] == EXPIRY_CLASS and FALLBACK_EXPIRY_KEYWORD in eb['help_text']]
+            candidates = [
+                eb for eb in edit_boxes
+                if eb['class_name'] == EXPIRY_CLASS and FALLBACK_EXPIRY_KEYWORD in str(eb.get('help_text') or '')
+            ]
             if candidates:
                 expiry_ctrl = candidates[0]['control']
                 print(f"⚠️ 使用备用方案，根据'{FALLBACK_EXPIRY_KEYWORD}'关键词找到授权期限框，索引 {candidates[0]['index']}")
             else:
-                # 假设索引 FALLBACK_EXPIRY_INDEX 是授权期限框
                 if len(edit_boxes) > FALLBACK_EXPIRY_INDEX and edit_boxes[FALLBACK_EXPIRY_INDEX]['class_name'] == EXPIRY_CLASS:
                     expiry_ctrl = edit_boxes[FALLBACK_EXPIRY_INDEX]['control']
                     print(f"⚠️ 使用备用方案，假设索引{FALLBACK_EXPIRY_INDEX}为授权期限框")
@@ -450,25 +514,228 @@ def main():
         print("❌ 无法定位授权密码框")
         sys.exit(1)
 
-    # 输入机器标识
-    input_to_control(machine_ctrl, args.machine_id, "机器标识框")
-    # 输入授权期限
+    input_to_control(machine_ctrl, machine_id, "机器标识框")
     input_to_control(expiry_ctrl, expiry_date, "授权期限框")
-    # 输入授权密码
     input_to_control(password_ctrl, PASSWORD, "授权密码框")
 
-    # 点击生成按钮
     click_success = click_generate_button(window)
     if not click_success:
         print("点击生成按钮失败，可能无法生成授权码。")
 
     print("\n等待授权码生成...")
-    time.sleep(2)  # 可根据实际情况调整或改为检测结果框变化
+    time.sleep(2)
 
-    # 复制授权码到剪贴板
-    copy_authorization_code_to_clipboard(window)
+    code = extract_license_code_from_window(window)
+    print("\n✅ 本台机器操作完成。")
+    return code
 
-    print("\n✅ 所有操作完成。")
+
+def _require_openpyxl():
+    try:
+        from openpyxl import load_workbook  # noqa: F401
+        return True
+    except ImportError:
+        print("多个授权（xlsx）需要安装 openpyxl，请执行: pip install openpyxl", file=sys.stderr)
+        return False
+
+
+def load_xlsx_jobs(xlsx_path, start_row):
+    """
+    打开 xlsx，从第 start_row 行起读 D 列（机器标识），返回 (wb, ws, path, jobs)。
+    jobs: [(excel_row_1based, machine_id), ...]，跳过 D 为空的行。
+    """
+    if not _require_openpyxl():
+        sys.exit(1)
+    from openpyxl import load_workbook
+
+    path = Path(xlsx_path).expanduser().resolve()
+    if not path.is_file():
+        print(f"错误: 文件不存在: {path}", file=sys.stderr)
+        sys.exit(1)
+    if path.suffix.lower() not in (".xlsx", ".xlsm"):
+        print("错误: 请使用 .xlsx 或 .xlsm 文件。", file=sys.stderr)
+        sys.exit(1)
+
+    wb = load_workbook(filename=str(path), read_only=False, data_only=False)
+    ws = wb.active
+    col_machine = 4   # D
+    jobs = []
+    start = max(1, int(start_row))
+    for row in range(start, ws.max_row + 1):
+        raw = ws.cell(row=row, column=col_machine).value
+        if raw is None:
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        jobs.append((row, text))
+    return wb, ws, path, jobs
+
+
+def pick_xlsx_path_via_file_dialog():
+    """图形界面选择 xlsx；取消或失败返回 None。"""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError:
+        return None
+
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes("-topmost", 1)
+    try:
+        path = filedialog.askopenfilename(
+            parent=root,
+            title="选择 xlsx（D 列=机器标识，E 列将写入授权码）",
+            filetypes=[
+                ("Excel 工作簿", "*.xlsx"),
+                ("Excel 宏", "*.xlsm"),
+                ("所有文件", "*.*"),
+            ],
+        )
+    finally:
+        root.destroy()
+    return path.strip() if path else None
+
+
+def prompt_xlsx_path_interactive():
+    """
+    多个授权：获取本地 xlsx 路径。
+    Windows 下优先弹出系统文件选择框（无需在终端粘贴）；取消或失败则用 input。
+    """
+    print()
+    print("提示：若不想交互选文件，可直接运行：")
+    print('  _tool license-lite --xlsx "D:\\\\path\\\\file.xlsx"')
+    print()
+
+    if sys.platform == "win32":
+        print("正在打开「选择 xlsx」窗口…（若取消，请在下面一行粘贴路径）")
+        try:
+            picked = pick_xlsx_path_via_file_dialog()
+            if picked:
+                print(f"已选择: {picked}")
+                return picked
+        except Exception as exc:
+            print(f"(打开文件对话框失败: {exc})")
+
+    print("请输入 .xlsx 的完整路径（在终端里可直接 Ctrl+V 粘贴）：")
+    return input("> ").strip().strip('"')
+
+
+def prompt_xlsx_start_row_interactive(default=5):
+    """起始行号，默认 5（标准 input，避免 questionary 文本框问题）。"""
+    raw = input(f"数据起始行号（Excel 行号，直接回车使用 {default}）：").strip()
+    if not raw:
+        return default
+    try:
+        n = int(raw)
+        return max(1, n)
+    except ValueError:
+        print(f"无效数字，使用默认起始行 {default}。")
+        return default
+
+
+def main():
+    parser = argparse.ArgumentParser(description="自动完成Lite授权工具的机器标识、授权期限输入和授权码生成")
+    parser.add_argument("--root", action="store_true", help="以 root 模式启动（启动参数从配置文件读取）")
+    parser.add_argument(
+        "--xlsx",
+        default=None,
+        help="多个授权：xlsx 路径；D 列机器标识，E 列写入授权码（与交互选「多个授权」一致）",
+    )
+    parser.add_argument(
+        "--xlsx-start-row",
+        type=int,
+        default=5,
+        metavar="N",
+        help="xlsx 数据起始行（Excel 行号，默认 5）",
+    )
+    parser.add_argument(
+        "machine_id",
+        nargs="?",
+        default=None,
+        help="单个授权时的机器标识；与 --xlsx 互斥",
+    )
+    args = parser.parse_args()
+    use_root = args.root
+    xlsx_arg = (args.xlsx or "").strip()
+    machine_id_arg = (args.machine_id or "").strip()
+
+    if xlsx_arg and machine_id_arg:
+        print("错误: 不能同时指定 MACHINE_ID 与 --xlsx。", file=sys.stderr)
+        sys.exit(2)
+
+    xlsx_bundle = None  # (wb, ws, path, jobs)
+    single_ids = None
+
+    if xlsx_arg:
+        wb, ws, path, jobs = load_xlsx_jobs(xlsx_arg, args.xlsx_start_row)
+        if not jobs:
+            print("错误: 从起始行起未在 D 列读到任何机器标识。", file=sys.stderr)
+            sys.exit(1)
+        xlsx_bundle = (wb, ws, path, jobs)
+    elif machine_id_arg:
+        single_ids = [machine_id_arg]
+    else:
+        mode = choose_authorization_mode_interactive()
+        if mode is None:
+            print("已取消。")
+            sys.exit(0)
+        if mode == "single":
+            mid = prompt_machine_id_single_interactive()
+            if not mid:
+                print("错误: 机器标识不能为空。", file=sys.stderr)
+                sys.exit(2)
+            single_ids = [mid]
+        else:
+            xlsx_path = prompt_xlsx_path_interactive()
+            if not xlsx_path:
+                print("错误: xlsx 路径不能为空。", file=sys.stderr)
+                sys.exit(2)
+            start_row = prompt_xlsx_start_row_interactive(args.xlsx_start_row)
+            wb, ws, path, jobs = load_xlsx_jobs(xlsx_path, start_row)
+            if not jobs:
+                print("错误: 从起始行起未在 D 列读到任何机器标识。", file=sys.stderr)
+                sys.exit(1)
+            xlsx_bundle = (wb, ws, path, jobs)
+
+    expiry_date = prompt_expiry_date_interactive()
+
+    if xlsx_bundle:
+        wb, ws, path, jobs = xlsx_bundle
+        total = len(jobs)
+        col_license = 5  # E
+        for idx, (row, mid) in enumerate(jobs):
+            print(f"\n{'=' * 50}\n第 {idx + 1}/{total} 台 — Excel 第 {row} 行，机器标识: {mid}\n{'=' * 50}")
+            code = run_lite_authorization(mid, expiry_date, use_root)
+            if not code:
+                print(f"❌ 第 {row} 行未获取到授权码，已中止。", file=sys.stderr)
+                try:
+                    wb.save(str(path))
+                    print(f"已尽力保存当前进度到: {path}")
+                except Exception as e:
+                    print(f"保存 xlsx 失败: {e}", file=sys.stderr)
+                sys.exit(1)
+            ws.cell(row=row, column=col_license).value = code
+            try:
+                wb.save(str(path))
+            except Exception as e:
+                print(f"❌ 写入 Excel 失败: {e}", file=sys.stderr)
+                sys.exit(1)
+            print(f"✅ 已写入第 {row} 行 E 列并保存文件。")
+        print(f"\n✅ 全部 {total} 行已处理: {path}")
+    else:
+        total = len(single_ids)
+        for idx, mid in enumerate(single_ids):
+            if total > 1:
+                print(f"\n{'=' * 50}\n第 {idx + 1}/{total} 台 — 机器标识: {mid}\n{'=' * 50}")
+            run_lite_authorization(mid, expiry_date, use_root)
+
+        if total > 1:
+            print(f"\n✅ 全部 {total} 台机器处理完毕。")
+        else:
+            print("\n✅ 所有操作完成。")
+
 
 if __name__ == "__main__":
     main()

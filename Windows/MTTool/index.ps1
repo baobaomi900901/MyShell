@@ -43,16 +43,60 @@ function _tool {
     $config = Get-CustomConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
-    # 无命令：显示列表s
+    # 无命令：与 _cd 相同，用 questionary 上下键选择（tool_menu.py）
     if (-not $Command) {
-        Write-Host "可用命令:" -ForegroundColor Green
-        $config.PSObject.Properties | Sort-Object Name | ForEach-Object {
-            $cmdName = $_.Name
-            $desc = $_.Value.description
-            $pathInfo = if ($_.Value.script_path) { " ($($_.Value.script_path))" } else { " (默认 src\$cmdName.ps1)" }
-            Write-Host ("    {0,-20} - {1}{2}" -f $cmdName, $desc, $pathInfo)
+        $menuScript = $null
+        if ($env:MYSHELL) {
+            $c = Join-Path $env:MYSHELL "public\_script\tool_menu.py"
+            if (Test-Path $c) { $menuScript = $c }
         }
-        return
+        if (-not $menuScript) {
+            $rel = Join-Path $scriptDir "..\..\public\_script\tool_menu.py"
+            $abs = [System.IO.Path]::GetFullPath($rel)
+            if (Test-Path $abs) { $menuScript = $abs }
+        }
+
+        if ($menuScript -and (Get-Command python -ErrorAction SilentlyContinue)) {
+            $tempPick = [System.IO.Path]::GetTempFileName()
+            try {
+                & python $menuScript $jsonPath $tempPick
+                $exitMenu = $LASTEXITCODE
+                if ($exitMenu -ne 0) {
+                    Write-Warning "交互菜单异常 (退出码: $exitMenu)，改为文本列表。"
+                }
+                else {
+                    $rawPick = Get-Content -Path $tempPick -Raw -ErrorAction SilentlyContinue
+                    if (-not [string]::IsNullOrWhiteSpace($rawPick)) {
+                        $Command = $rawPick.Trim()
+                    }
+                    else {
+                        return
+                    }
+                }
+            }
+            finally {
+                if (Test-Path $tempPick) {
+                    Remove-Item -Path $tempPick -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
+        if (-not $Command) {
+            Write-Host "可用命令:" -ForegroundColor Green
+            $config.PSObject.Properties | Sort-Object Name | ForEach-Object {
+                $cmdName = $_.Name
+                $desc = $_.Value.description
+                $pathInfo = if ($_.Value.script_path) { " ($($_.Value.script_path))" } else { " (默认 src\$cmdName.ps1)" }
+                Write-Host ("    {0,-20} - {1}{2}" -f $cmdName, $desc, $pathInfo)
+            }
+            if (-not $menuScript) {
+                Write-Host "提示: 将 MyShell 的 public\_script\tool_menu.py 置于可发现路径，或设置 MYSHELL 以启用上下键菜单。" -ForegroundColor DarkGray
+            }
+            elseif (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+                Write-Host "提示: 未找到 python，无法启动交互菜单。" -ForegroundColor DarkGray
+            }
+            return
+        }
     }
 
     # 检查命令是否存在
