@@ -37,7 +37,7 @@ remove_sh() {
 }
 
 # 检测方法是否存在
-type_() {
+_type() {
     # 用途: 检测方法是否存在
     if [ $# -eq 0 ]; then
         echo "用法: type_ <name1>"
