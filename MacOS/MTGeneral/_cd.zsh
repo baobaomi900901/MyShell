@@ -1,5 +1,6 @@
 # cd_ 函数 for macOS / Linux (zsh)
 _cd() {
+    # 用途: cd 到目标目录
     # 检查环境变量 MYSHELL 是否设置
     if [[ -z "$MYSHELL" ]]; then
         echo "❌ 环境变量 MYSHELL 未设置" >&2

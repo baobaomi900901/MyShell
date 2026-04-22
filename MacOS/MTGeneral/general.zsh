@@ -5,7 +5,7 @@ setsh() {
     }
 
 # 允许运行任何来源的应用
-master_() { 
+_master() { 
     # 用途: 允许运行任何来源的应用
     sudo spctl --master-disable 
     }
@@ -48,7 +48,7 @@ type_() {
 }
 
 # 现在的时间
-now_() {
+_now() {
     # 用途: 显示当前时间
     # 获取当前日期时间，格式：20251117-10:10
     local current_time=$(date "+%Y%m%d-%H:%M")
@@ -62,7 +62,7 @@ now_() {
 }
 
 # 本机ip地址
-myip_() {
+_myip() {
     # 用途: 显示本机IP地址
     # 尝试多个常见的网络接口
     local interfaces=("en0" "en1" "en2" "eth0")
@@ -92,7 +92,7 @@ myip_() {
 }
 
 # 创建文件或文件夹的便捷函数
-new_() {
+_new() {
     # 用途: 创建文件或文件夹
     local force_overwrite=false
     local name

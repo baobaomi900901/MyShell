@@ -31,6 +31,7 @@ print((data.get(cmd) or {}).get("description", "") or "")
 
 # 与 Windows _tool 对齐：无参走 questionary 菜单，有参按 config 执行脚本
 _tool() {
+    # 用途: 工具集
     local config_file="$tool_SELFPATH/config.json"
     if [[ ! -f "$config_file" ]]; then
         echo "config.json not found in $tool_SELFPATH" >&2
