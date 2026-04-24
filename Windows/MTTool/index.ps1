@@ -2,6 +2,7 @@
 # 作用: tool_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
 function _tool {
+    # 用途: 工具类函数
     <#
     .SYNOPSIS
         执行由 config.json 定义的命令脚本。

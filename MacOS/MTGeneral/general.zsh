@@ -153,6 +153,27 @@ _new() {
     fi
 }
 
+# 删除文件或文件夹（支持多路径、相对/绝对路径；目录递归删除）
+_del() {
+    # 用途: 删除文件或目录（支持多路径；目录递归删除）
+    if [ $# -eq 0 ]; then
+        echo -e "${c_y}用法: _del <路径> [路径2 ...]${c_x}"
+        echo -e "${c_y}  目录会递归删除（等同 rm -rf）${c_x}"
+        return 1
+    fi
+    for p in "$@"; do
+        if [ ! -e "$p" ]; then
+            echo -e "${c_m}⚠️  路径不存在: $p${c_x}"
+            continue
+        fi
+        if rm -rf -- "$p" 2>/dev/null; then
+            echo -e "${c_g}🗑️  已删除: $p${c_x}"
+        else
+            echo -e "${c_m}❌ 删除失败: $p${c_x}"
+        fi
+    done
+}
+
 cls() {
     # 用途: 清空终端信息
     clear

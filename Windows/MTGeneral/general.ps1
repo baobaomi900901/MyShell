@@ -182,6 +182,33 @@ function _new {
     }
 }
 
+function _del {
+    # 用途: 删除文件或文件夹（支持多路径；目录递归删除）
+    <#
+    .SYNOPSIS
+        删除文件或文件夹（可一次删除多个路径）。
+    .DESCRIPTION
+        使用 -LiteralPath 避免路径中的方括号等被误当作通配符。目录会递归删除。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true, Position = 0)]
+        [string[]]$Path
+    )
+    foreach ($p in $Path) {
+        if (-not (Test-Path -LiteralPath $p)) {
+            Write-Host "⚠️  路径不存在: $p" -ForegroundColor Yellow
+            continue
+        }
+        try {
+            Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction Stop
+            Write-Host "🗑️  已删除: $p" -ForegroundColor Green
+        } catch {
+            Write-Host "❌ 删除失败: $p — $_" -ForegroundColor Red
+        }
+    }
+}
+
 # 公共方法区域
 
 # 辅助函数：读取并解析 config.json（支持以 # 开头的注释）
