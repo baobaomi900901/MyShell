@@ -22,9 +22,7 @@ gcmt () {
 }
 
 greset() {
-    # 用途:
-    # - 无参数：调用 Python 交互式 greset
-    # - 有参数：兼容旧用法，并新增 back -1 / back gcmt
+    # 用途: 调用 Python 交互式 greset
 
     local py_script=""
     if [[ -n "$MYSHELL" ]]; then
