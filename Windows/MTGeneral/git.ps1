@@ -43,16 +43,34 @@ function gpo {
 }
 
 function greset {
-    # 用途: 执行 "git reset --hard" 或 "git reset --soft"
-    param (
-        [Parameter(Position = 0)]
-        [ArgumentCompleter({
-            param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-            $validActions = @('all', 'back')
-            $validActions -like "$wordToComplete*"
-        })]
-        [string]$action
+    # 用途:
+    # - 无参数：调用 Python 交互式 greset
+    # - 有参数：兼容旧用法，并新增 back -1 / back gcmt
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Args
     )
+
+    $myshell = $env:MYSHELL
+    if ($myshell) {
+        $pyScript = Join-Path $myshell "public\_script\greset.py"
+    }
+
+    if ($Args.Count -eq 0) {
+        if ($pyScript -and (Test-Path $pyScript)) {
+            python $pyScript
+            return
+        }
+        Write-Host "使用方法:" -ForegroundColor blue
+        Write-Host "  greset all          # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
+        Write-Host "  greset back         # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow
+        Write-Host "  greset back -1      # Soft reset HEAD~1 (撤销最近 1 次提交，保留更改到暂存区)" -ForegroundColor Yellow
+        Write-Host "  greset back gcmt    # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
+        return
+    }
+
+    $action = $Args[0]
+    $mode = if ($Args.Count -ge 2) { $Args[1] } else { $null }
 
     switch ($action) {
         "all" {
@@ -60,13 +78,35 @@ function greset {
             Write-Host "Executed: git reset --hard HEAD (强制重置工作区和暂存区)"
         }
         "back" {
-            git reset --soft HEAD~1
-            Write-Host "Executed: git reset --soft HEAD~1 (撤销最新提交，保留更改到暂存区)"
+            if ($mode -eq "gcmt") {
+                git reset
+                Write-Host "Executed: git reset (取消暂存，保留工作区改动)"
+                return
+            }
+            if (-not $mode) {
+                git reset --soft HEAD~1
+                Write-Host "Executed: git reset --soft HEAD~1 (撤销最新提交，保留更改到暂存区)"
+                return
+            }
+            if ($mode -match '^-([0-9]+)$') {
+                $n = [int]$Matches[1]
+                git reset --soft ("HEAD~{0}" -f $n)
+                Write-Host ("Executed: git reset --soft HEAD~{0} (撤销最近 {0} 次提交，保留更改到暂存区)" -f $n)
+                return
+            }
+            Write-Host "错误: back 参数不支持。可用: -1/-2/... 或 gcmt" -ForegroundColor Red
         }
         default {
+            # 有参数但不识别：尝试转给 Python（如果存在）
+            if ($pyScript -and (Test-Path $pyScript)) {
+                python $pyScript @Args
+                return
+            }
             Write-Host "使用方法:" -ForegroundColor blue
-            Write-Host "  greset all   # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
-            Write-Host "  greset back  # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow 
+            Write-Host "  greset all          # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
+            Write-Host "  greset back         # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow
+            Write-Host "  greset back -1      # Soft reset HEAD~1 (撤销最近 1 次提交，保留更改到暂存区)" -ForegroundColor Yellow
+            Write-Host "  greset back gcmt    # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
         }
     }
 }
