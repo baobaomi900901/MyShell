@@ -89,8 +89,8 @@ def main():
             instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)"
         )
         if target_path is None:
-            print(f"{YELLOW}已取消打开项目。{RESET}")
-            sys.exit(1)
+            print(f"{YELLOW}已取消操作。{RESET}")
+            sys.exit(0)
 
     write_temp_file(out_file, target_path)
 

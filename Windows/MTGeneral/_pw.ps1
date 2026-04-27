@@ -37,7 +37,9 @@ function _pw {
             Set-Clipboard -Value $password
             Write-Host "✅ 密码已复制到剪贴板" -ForegroundColor Green
         } else {
-            Write-Host "❌ 未获取到密码" -ForegroundColor Red
+            # 用户在交互菜单中取消时，Python 会正常退出但不会写入 tempFile；
+            # 这里不再报错提示，保持安静返回。
+            return
         }
     } finally {
         if (Test-Path $tempFile) {

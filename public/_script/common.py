@@ -6,6 +6,15 @@ import os
 import platform
 import json
 
+# Windows 控制台可能是 GBK，遇到 “❌/✔” 等字符会炸；这里统一把 stdout/stderr 设为 utf-8 并容错替换。
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # 颜色支持
 try:
     from colorama import init, Fore, Style

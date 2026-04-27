@@ -39,7 +39,7 @@ def _confirm(prompt: str) -> bool:
 
 def action_all() -> int:
     if not _confirm("Run `git reset --hard HEAD` (discard ALL uncommitted changes)? (y/N)"):
-        print(f"{YELLOW}Cancelled.{RESET}")
+        print(f"{YELLOW}已取消操作。{RESET}")
         return 0
     code = _run_git(["reset", "--hard", "HEAD"])
     if code == 0:
@@ -53,7 +53,7 @@ def action_back_n(n: int) -> int:
         return 2
     target = f"HEAD~{n}"
     if not _confirm(f"Run `git reset --soft {target}` (undo last {n} commit(s), keep changes staged)? (y/N)"):
-        print(f"{YELLOW}Cancelled.{RESET}")
+        print(f"{YELLOW}已取消操作。{RESET}")
         return 0
     code = _run_git(["reset", "--soft", target])
     if code == 0:
@@ -64,7 +64,7 @@ def action_back_n(n: int) -> int:
 def action_back_gcmt() -> int:
     # “放弃本地缓存”这里按“放弃暂存区/缓存区（staging/index）”理解：只取消暂存，不丢工作区改动
     if not _confirm("Run `git reset` (unstage, keep working tree changes)? (y/N)"):
-        print(f"{YELLOW}Cancelled.{RESET}")
+        print(f"{YELLOW}已取消操作。{RESET}")
         return 0
     code = _run_git(["reset"])
     if code == 0:
@@ -89,7 +89,7 @@ def interactive() -> int:
         instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)",
     )
     if value is None:
-        print(f"{YELLOW}Cancelled.{RESET}")
+        print(f"{YELLOW}已取消操作。{RESET}")
         return 0
 
     if value == "all":
