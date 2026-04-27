@@ -43,9 +43,7 @@ function gpo {
 }
 
 function greset {
-    # 用途:
-    # - 无参数：调用 Python 交互式 greset
-    # - 有参数：兼容旧用法，并新增 back -1 / back gcmt
+    # 用途: 调用 Python 交互式 greset
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Args
@@ -56,16 +54,23 @@ function greset {
         $pyScript = Join-Path $myshell "public\_script\greset.py"
     }
 
-    if ($Args.Count -eq 0) {
-        if ($pyScript -and (Test-Path $pyScript)) {
+    function _greset_usage {
+        Write-Host "使用方法:" -ForegroundColor Blue
+        Write-Host "  greset               # 交互式选择" -ForegroundColor Yellow
+        Write-Host "  greset all           # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
+        Write-Host "  greset back          # Soft reset HEAD~1 (撤销最新提交，保留更改到暂存区)" -ForegroundColor Yellow
+        Write-Host "  greset back -1       # Soft reset HEAD~1 (同上)" -ForegroundColor Yellow
+        Write-Host "  greset back -2       # Soft reset HEAD~2 (撤销最近 2 次提交，保留更改到暂存区)" -ForegroundColor Yellow
+        Write-Host "  greset back gcmt     # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
+    }
+
+    # 优先走 Python：避免这里维护两套逻辑
+    if ($pyScript -and (Test-Path $pyScript)) {
+        if ($Args.Count -eq 0) {
             python $pyScript
-            return
+        } else {
+            python $pyScript @Args
         }
-        Write-Host "使用方法:" -ForegroundColor blue
-        Write-Host "  greset all          # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
-        Write-Host "  greset back         # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow
-        Write-Host "  greset back -1      # Soft reset HEAD~1 (撤销最近 1 次提交，保留更改到暂存区)" -ForegroundColor Yellow
-        Write-Host "  greset back gcmt    # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
         return
     }
 
@@ -97,16 +102,7 @@ function greset {
             Write-Host "错误: back 参数不支持。可用: -1/-2/... 或 gcmt" -ForegroundColor Red
         }
         default {
-            # 有参数但不识别：尝试转给 Python（如果存在）
-            if ($pyScript -and (Test-Path $pyScript)) {
-                python $pyScript @Args
-                return
-            }
-            Write-Host "使用方法:" -ForegroundColor blue
-            Write-Host "  greset all          # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
-            Write-Host "  greset back         # Soft reset to previous commit (保留更改到暂存区)" -ForegroundColor Yellow
-            Write-Host "  greset back -1      # Soft reset HEAD~1 (撤销最近 1 次提交，保留更改到暂存区)" -ForegroundColor Yellow
-            Write-Host "  greset back gcmt    # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
+            _greset_usage
         }
     }
 }

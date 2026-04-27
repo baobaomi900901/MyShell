@@ -31,16 +31,28 @@ greset() {
         py_script="$MYSHELL/public/_script/greset.py"
     fi
 
-    if [[ $# -eq 0 ]]; then
-        if [[ -f "$py_script" ]]; then
-            python3 "$py_script"
-            return $?
-        fi
+    _greset_usage() {
         echo -e "${c_b}用法:${c_x}"
-        echo -e "${c_y}  greset all          # 强制重置到 HEAD（丢弃所有未提交的更改）${c_x}"
-        echo -e "${c_y}  greset back         # 软重置到上一个提交（保留更改到暂存区）${c_x}"
-        echo -e "${c_y}  greset back -1      # 软重置 HEAD~1（撤销最近 1 次提交，保留更改到暂存区）${c_x}"
-        echo -e "${c_y}  greset back gcmt    # 取消暂存（保留工作区改动）${c_x}"
+        echo -e "${c_y}  greset               # 交互式选择${c_x}"
+        echo -e "${c_y}  greset all           # 强制重置到 HEAD（丢弃所有未提交的更改）${c_x}"
+        echo -e "${c_y}  greset back          # 软重置 HEAD~1（撤销最新提交，保留更改到暂存区）${c_x}"
+        echo -e "${c_y}  greset back -1       # 软重置 HEAD~1（同上）${c_x}"
+        echo -e "${c_y}  greset back -2       # 软重置 HEAD~2（撤销最近 2 次提交，保留更改到暂存区）${c_x}"
+        echo -e "${c_y}  greset back gcmt     # 取消暂存（保留工作区改动）${c_x}"
+    }
+
+    # 优先走 Python：避免这里维护两套逻辑
+    if [[ -f "$py_script" ]]; then
+        if [[ $# -eq 0 ]]; then
+            python3 "$py_script"
+        else
+            python3 "$py_script" "$@"
+        fi
+        return $?
+    fi
+
+    if [[ $# -eq 0 ]]; then
+        _greset_usage
         return 1
     fi
 
@@ -70,15 +82,7 @@ greset() {
             return 1
             ;;
         *)
-            if [[ -f "$py_script" ]]; then
-                python3 "$py_script" "$@"
-                return $?
-            fi
-            echo -e "${c_b}用法:${c_x}"
-            echo -e "${c_y}  greset all          # 强制重置到 HEAD（丢弃所有未提交的更改）${c_x}"
-            echo -e "${c_y}  greset back         # 软重置到上一个提交（保留更改到暂存区）${c_x}"
-            echo -e "${c_y}  greset back -1      # 软重置 HEAD~1（撤销最近 1 次提交，保留更改到暂存区）${c_x}"
-            echo -e "${c_y}  greset back gcmt    # 取消暂存（保留工作区改动）${c_x}"
+            _greset_usage
             return 1
             ;;
     esac
