@@ -48,14 +48,16 @@ _pw() {
                 return 1
             fi
         else
-            echo "❌ 未获取到密码" >&2
-            return 1
+            # 用户取消时通常不会写入 temp_file；这里保持安静返回
+            return 0
         fi
     else
         rm -f "$temp_file"
-        if [[ $exit_code -ne 0 ]]; then
-            echo "❌ 操作已取消或出错 (退出码: $exit_code)" >&2
+        # 用户取消：Python 会输出“已取消操作。”并正常退出（exit_code=0），这里不再额外报错
+        if [[ $exit_code -eq 0 ]]; then
+            return 0
         fi
-        return 1
+        # 真错误：保留退出码，静默返回（错误信息由 Python/上游提示）
+        return $exit_code
     fi
 }
