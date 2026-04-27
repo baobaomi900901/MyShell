@@ -73,15 +73,20 @@ def action_back_gcmt() -> int:
 
 
 def interactive() -> int:
+    # 交互菜单显示：保证 “#” 后的说明对齐
+    menu = [
+        ("all", "放弃所有修改（git reset --hard HEAD）", "all"),
+        ("back -1", "放弃本地最近 1 次提交记录（git reset --soft HEAD~1）", "back:-1"),
+        ("back gcmt", "放弃本地缓存/暂存区（取消暂存，保留工作区改动：git reset）", "back:gcmt"),
+    ]
+    max_left = max(len(left) for left, _, _ in menu)
     items: List[Tuple[str, str, str]] = [
-        ("all", "all      # discard all changes (git reset --hard HEAD)", "all"),
-        ("back1", "back -1  # undo last commit (soft reset, keep staged)", "back:-1"),
-        ("gcmt", "back gcmt # unstage (git reset)", "back:gcmt"),
+        (left, f"{left:<{max_left}}  # {desc}", value) for left, desc, value in menu
     ]
     key, value = interactive_select(
-        "Select greset action:",
+        "请选择 greset 操作:",
         items,
-        instruction="(Up/Down to select, Enter to confirm, Ctrl+C to quit)",
+        instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)",
     )
     if value is None:
         print(f"{YELLOW}Cancelled.{RESET}")
