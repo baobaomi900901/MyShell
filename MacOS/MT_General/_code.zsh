@@ -1,5 +1,5 @@
 # code_ 函数 for macOS / Linux (zsh)
-_code() {
+code_() {
     # 用途: 用 VS Code 打开当前目录、项目、文件、文件夹
     # 检查环境变量 MYSHELL 是否设置
     if [[ -z "$MYSHELL" ]]; then

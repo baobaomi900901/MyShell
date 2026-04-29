@@ -99,6 +99,4 @@ for k in sorted(d.keys()):
   _describe -t targets game opts
 }
 
-_game() { game_ "$@" }
-
-compdef _myshell_game_tab game_ _game
+compdef _myshell_game_tab game_

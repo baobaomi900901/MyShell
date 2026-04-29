@@ -1,11 +1,6 @@
-# 与 Windows 一致的命令名：cd_ / pw_ / code_（转发到 _cd / _pw / _code），并注册与下划线版相同的 Tab 补全
-# 依赖：_cd、_pw、_code 已定义（同目录下 _cd.zsh 等需先被加载；本文件因字母序在 _*.zsh 之后执行）
+# Tab 补全：与 Windows 一致，仅对 cd_ / pw_ / code_ 注册（命令实现在 _cd.zsh / _pw.zsh / _code.zsh 中，函数名为后缀下划线）
 
-cd_() { _cd "$@" }
-pw_() { _pw "$@" }
-code_() { _code "$@" }
-
-# path.json：仅含当前系统有路径的项；显示名中 _ 换为 -（与 Windows 一致）
+# path.json
 _myshell_path_tab() {
   [[ -n "${MYSHELL:-}" ]] || return 1
   local json="${MYSHELL}/config/private/path.json"
@@ -32,7 +27,7 @@ for k in sorted(d.keys()):
   _describe -t targets bookmark opts
 }
 
-compdef _myshell_path_tab cd_ _cd
+compdef _myshell_path_tab cd_
 
 # path_code.json
 _myshell_code_tab() {
@@ -61,9 +56,9 @@ for k in sorted(d.keys()):
   _describe -t targets bookmark opts
 }
 
-compdef _myshell_code_tab code_ _code
+compdef _myshell_code_tab code_
 
-# password.json：含 password 字段的键
+# password.json
 _myshell_pw_tab() {
   [[ -n "${MYSHELL:-}" ]] || return 1
   local json="${MYSHELL}/config/private/password.json"
@@ -89,4 +84,4 @@ for k in sorted(d.keys()):
   _describe -t targets password opts
 }
 
-compdef _myshell_pw_tab pw_ _pw
+compdef _myshell_pw_tab pw_

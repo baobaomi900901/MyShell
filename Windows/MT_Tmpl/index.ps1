@@ -1,5 +1,5 @@
 ﻿# .\Windows\MTTmpl\index.ps1
-# 作用: tmpl 方法集入口；无参时与 _cd/_tool 相同，用 tool_menu.py 上下键选择，否则执行对应脚本
+# 作用: tmpl 方法集入口；无参时与 cd_/tool_ 相同，用 tool_menu.py 上下键选择，否则执行对应脚本
 
 function tmpl_ {
     <#
@@ -43,7 +43,7 @@ function tmpl_ {
     $config = Get-CustomConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
-    # 无命令：与 _cd/_tool 相同，用 questionary 上下键选择（tool_menu.py）
+    # 无命令：与 cd_/tool_ 相同，用 questionary 上下键选择（tool_menu.py）
     if (-not $Command) {
         $menuScript = $null
         if ($env:MYSHELL) {
@@ -248,8 +248,4 @@ $script:myshell_tmplCompleter = {
         return
     }
 }
-foreach ($cmdName in @('tmpl_', '_tmpl')) {
-    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_tmplCompleter
-}
-
-function _tmpl { tmpl_ @args }
+Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock $script:myshell_tmplCompleter

@@ -55,7 +55,7 @@ function cd_ {
     }
 }
 
-# Tab 补全：cd_ 与 _cd（Mac 风格别名）共用
+# Tab 补全
 $script:myshell_cdCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
@@ -94,6 +94,4 @@ $script:myshell_cdCompleter = {
         return
     }
 }
-foreach ($cmdName in @('cd_', '_cd')) {
-    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_cdCompleter
-}
+Register-ArgumentCompleter -CommandName cd_ -ScriptBlock $script:myshell_cdCompleter

@@ -50,7 +50,7 @@ function code_ {
     }
 }
 
-# Tab 补全：code_ 与 _code 共用
+# Tab 补全
 $script:myshell_codeCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
@@ -89,6 +89,4 @@ $script:myshell_codeCompleter = {
         return
     }
 }
-foreach ($cmdName in @('code_', '_code')) {
-    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_codeCompleter
-}
+Register-ArgumentCompleter -CommandName code_ -ScriptBlock $script:myshell_codeCompleter

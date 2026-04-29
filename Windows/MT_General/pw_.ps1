@@ -51,7 +51,7 @@ function pw_ {
     }
 }
 
-# Tab 补全：pw_ 与 _pw 共用
+# Tab 补全
 $script:myshell_pwCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
@@ -87,6 +87,4 @@ $script:myshell_pwCompleter = {
         return
     }
 }
-foreach ($cmdName in @('pw_', '_pw')) {
-    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_pwCompleter
-}
+Register-ArgumentCompleter -CommandName pw_ -ScriptBlock $script:myshell_pwCompleter

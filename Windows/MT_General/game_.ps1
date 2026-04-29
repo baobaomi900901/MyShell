@@ -137,7 +137,7 @@ function game_ {
     }
 }
 
-# Tab 补全：game_ 与 _game 共用
+# Tab 补全
 $script:myshell_gameCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
@@ -173,9 +173,7 @@ $script:myshell_gameCompleter = {
         return
     }
 }
-foreach ($cmdName in @('game_', '_game')) {
-    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_gameCompleter
-}
+Register-ArgumentCompleter -CommandName game_ -ScriptBlock $script:myshell_gameCompleter
 
 # 简单的编辑命令（用 VS Code 打开配置文件）
 function edit-game-config {

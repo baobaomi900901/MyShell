@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Mac 侧 tmpl 模板入口：与 MTTool/_tool、Windows/MTTmpl 行为对齐
+# Mac 侧 tmpl_ 模板入口：与 MTTool、Windows MT_Tmpl 行为对齐
 
 tmpl_SELFPATH="${0:A:h}"
 
@@ -28,7 +28,7 @@ print((data.get(cmd) or {}).get("description", "") or "")
 ' "$cfg" "$c"
 }
 
-tmpl() {
+tmpl_() {
     local config_file="$tmpl_SELFPATH/config.json"
     if [[ ! -f "$config_file" ]]; then
         echo "config.json not found in $tmpl_SELFPATH" >&2
@@ -58,7 +58,7 @@ tmpl() {
             [[ -f "$temp" ]] && rm -f "$temp"
 
             if [[ -n "$picked" ]]; then
-                tmpl "$picked"
+                tmpl_ "$picked"
                 return $?
             fi
             if [[ $exit_menu -ne 0 ]]; then
@@ -202,15 +202,6 @@ print("可用命令:", ", ".join(sorted(d.keys())))
     return 0
 }
 
-# 与 tmpl 等价（命名与 Windows tmpl_/ _tmpl 对齐）
-tmpl_() {
-    tmpl "$@"
-}
-
-_tmpl() {
-    tmpl "$@"
-}
-
 _tmpl_tab_for() {
     local -a opts
     local config_file="$tmpl_SELFPATH/config.json"
@@ -235,4 +226,4 @@ for key in sorted(data.keys()):
     _describe -t targets command opts
 }
 
-compdef _tmpl_tab_for tmpl tmpl_ _tmpl
+compdef _tmpl_tab_for tmpl_
