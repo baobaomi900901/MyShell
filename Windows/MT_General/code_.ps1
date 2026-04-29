@@ -1,6 +1,6 @@
 ﻿# Windows/MTGeneral/code_.ps1
 
-function _code {
+function code_ {
     # 用途: 用 VS Code 打开配置项；无参时交互选择，有参时直接打开（键名可与 Tab 补全一致，支持 - 写法）
     param(
         [Parameter(Mandatory = $false, Position = 0)]
@@ -51,7 +51,7 @@ function _code {
 }
 
 # 注册 Tab 补全（保持之前正确的实现）
-Register-ArgumentCompleter -CommandName _code -ScriptBlock {
+Register-ArgumentCompleter -CommandName code_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）

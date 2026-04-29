@@ -1,6 +1,6 @@
 ﻿# Windows/MTGeneral/cd_.ps1
 
-function _cd {
+function cd_ {
     # 用途: cd 到指定目录；无参时交互选择，有参时直接跳转（键名可与 Tab 补全一致，支持 - 写法）
     param(
         [Parameter(Mandatory = $false, Position = 0)]
@@ -56,7 +56,7 @@ function _cd {
 }
 
 # Tab 补全功能（保持不变）
-Register-ArgumentCompleter -CommandName _cd -ScriptBlock {
+Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）

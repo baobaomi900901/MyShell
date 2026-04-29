@@ -1,7 +1,7 @@
 ﻿# .\Windows\MTTool\index.ps1
 # 作用: tool_ 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
 
-function _tool {
+function tool_ {
     # 用途: 工具类函数
     <#
     .SYNOPSIS
@@ -216,7 +216,7 @@ function _tool {
 $scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $script:tool_configPath = Join-Path $scriptDirForCompletion "config.json"
 
-Register-ArgumentCompleter -CommandName _tool -ParameterName Command -ScriptBlock {
+Register-ArgumentCompleter -CommandName tool_ -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $config = Get-CustomConfig -JsonPath $script:tool_configPath

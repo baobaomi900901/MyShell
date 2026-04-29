@@ -1,7 +1,7 @@
 ﻿# .\Windows\MTTmpl\index.ps1
 # 作用: tmpl 方法集入口；无参时与 _cd/_tool 相同，用 tool_menu.py 上下键选择，否则执行对应脚本
 
-function tmpl {
+function tmpl_ {
     <#
     .SYNOPSIS
         执行由 config.json 定义的命令脚本。
@@ -211,34 +211,40 @@ function tmpl {
     }
 }
 
-# 与 tmpl 等价（复制模板后若将函数改名为 _xxx，可只保留一个并删掉此处）
-function _tmpl {
-    [CmdletBinding()]
-    param(
-        [Parameter(Position = 0, Mandatory = $false)]
-        [string]$Command,
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]]$ScriptArgs
-    )
-    & tmpl @PSBoundParameters
-}
 
-# --- Tab 补全器 ---
-$scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-$script:tmpl_configPath = Join-Path $scriptDirForCompletion "config.json"
+# Tab 补全：config 与 index.ps1 同目录，避免随当前工作目录变化而失效
+$script:MT_Tmpl_ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$script:MT_Tmpl_ConfigPath = Join-Path $script:MT_Tmpl_ScriptDir 'config.json'
 
-$script:tmplCommandCompleter = {
-    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
 
-    $config = Get-CustomConfig -JsonPath $script:tmpl_configPath
-    if (-not $config) { return $null }
+    $configFile = $script:MT_Tmpl_ConfigPath
 
-    $allCommands = $config.PSObject.Properties.Name
-    $allCommands | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-        $cmdName = $_
-        $desc = $config.$cmdName.description
-        [System.Management.Automation.CompletionResult]::new($cmdName, $cmdName, 'ParameterValue', $desc)
+    if (-not (Test-Path -LiteralPath $configFile)) {
+        return
+    }
+    
+    try {
+        $config = Get-Content -Path $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
+
+        $completionItems = $config.PSObject.Properties | Where-Object {
+            $_.Value -and ($_.Value.script_path -or $_.Value.description)
+        } | ForEach-Object {
+            $displayName = $_.Name -replace '_', '-'
+            $description = ($_.Value.description -replace "`n", " ")
+            [System.Management.Automation.CompletionResult]::new(
+                $displayName,
+                $displayName,
+                'ParameterValue',
+                $description
+            )
+        }
+
+        $completionItems | Where-Object {
+            $_.CompletionText -like "$wordToComplete*"
+        }
+    } catch {
+        return
     }
 }
-Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock $script:tmplCommandCompleter
-Register-ArgumentCompleter -CommandName _tmpl -ParameterName Command -ScriptBlock $script:tmplCommandCompleter

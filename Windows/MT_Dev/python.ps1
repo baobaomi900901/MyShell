@@ -1,5 +1,5 @@
 ﻿# 激活当前目录下的 .venv 虚拟环境
-function venv_star {
+function py_star {
     # 用途: 激活当前目录下的 .venv 虚拟环境
     if (Test-Path ".\.venv\Scripts\Activate.ps1") {
         .\.venv\Scripts\Activate.ps1
@@ -9,7 +9,7 @@ function venv_star {
     }
 }
 
-function venv_end {
+function py_end {
     # 用途: 退出当前虚拟环境
     if ($env:VIRTUAL_ENV) {
         deactivate
@@ -17,4 +17,18 @@ function venv_end {
     } else {
         Write-Host "⚠️ 当前未激活任何虚拟环境" -ForegroundColor Yellow
     }
+}
+
+function pym {
+    # 用途: 简化 python main.py 的调用
+  <#
+  .SYNOPSIS
+      简化 python main.py 的调用
+  .DESCRIPTION
+      将所有传入的参数原样转发给当前路径的下的 main.py。
+      相当于每次输入 python main.py 的快捷方式。
+  .EXAMPLE
+      pym [args1] [args2] [...]
+  #>
+  python main.py @args
 }

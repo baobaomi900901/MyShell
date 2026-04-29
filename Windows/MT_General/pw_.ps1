@@ -1,6 +1,6 @@
 ﻿# Windows/MTGeneral/_pw.ps1
 
-function _pw {
+function pw_ {
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Query
@@ -52,7 +52,7 @@ function _pw {
 }
 
 # Tab 补全（保持不变）
-Register-ArgumentCompleter -CommandName _pw -ScriptBlock {
+Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
     $configFile = Join-Path $env:MYSHELL "config\private\password.json"

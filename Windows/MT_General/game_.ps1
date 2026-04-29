@@ -1,7 +1,7 @@
 ﻿# .\Windows\MTGame\index.ps1
 # 游戏存档备份管理函数（支持 UTF-8 配置文件）
 
-function _game {
+function game_ {
     # 用途: 游戏存档备份管理工具
     param(
         [Parameter(Mandatory = $false, Position = 0)]
@@ -138,7 +138,7 @@ function _game {
 }
 
 # Tab 补全功能（同样使用 UTF-8 读取配置）
-Register-ArgumentCompleter -CommandName _game -ScriptBlock {
+Register-ArgumentCompleter -CommandName game_ -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
     
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
