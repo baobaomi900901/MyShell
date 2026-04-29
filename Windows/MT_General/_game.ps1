@@ -3,8 +3,8 @@
 
 function _game {
     # 用途: 游戏存档备份管理工具
-    param (
-        [Parameter(Position = 0)]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
         [string]$action
     )
 

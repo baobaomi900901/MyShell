@@ -1,7 +1,12 @@
 ﻿# Windows/MTGeneral/code_.ps1
 
 function _code {
-    # 用途: 用vscode 打开指定 文件 或 目录
+    # 用途: 用 VS Code 打开配置项；无参时交互选择，有参时直接打开（键名可与 Tab 补全一致，支持 - 写法）
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Query
+    )
+
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
@@ -19,8 +24,13 @@ function _code {
     $tempFile = [System.IO.Path]::GetTempFileName()
 
     try {
-        python $pyScript $configPath $tempFile $Query
-        
+        if ($Query) {
+            python $pyScript $configPath $tempFile $Query
+        }
+        else {
+            python $pyScript $configPath $tempFile
+        }
+
         $targetPath = Get-Content -Path $tempFile -Raw
         
         if (-not [string]::IsNullOrWhiteSpace($targetPath)) {

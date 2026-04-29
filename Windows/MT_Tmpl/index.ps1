@@ -1,5 +1,5 @@
 ﻿# .\Windows\MTTmpl\index.ps1
-# 作用: tmpl 方法集的入口文件，显示可用命令列表，支持 Tab 补全，并执行对应的脚本
+# 作用: tmpl 方法集入口；无参时与 _cd/_tool 相同，用 tool_menu.py 上下键选择，否则执行对应脚本
 
 function tmpl {
     <#
@@ -7,14 +7,14 @@ function tmpl {
         执行由 config.json 定义的命令脚本。
     .DESCRIPTION
         根据第一个参数查找 config.json 中对应的命令，执行关联的脚本（支持 .ps1, .py, .js）。
-        若未提供命令，则显示所有可用命令列表。
+        若未提供命令，优先通过 public\_script\tool_menu.py 交互选择（需 Python）；失败则打印文本列表。
         支持在 config.json 中为命令配置 "ignore_exit_code": true 来忽略非零退出码。
     .PARAMETER Command
         要执行的命令名称（对应 config.json 中的键）。
     .PARAMETER ScriptArgs
         传递给目标脚本的额外参数。
     .EXAMPLE
-        tmpl                      # 列出所有命令
+        tmpl                      # 交互菜单选命令（或文本列表回退）
         tmpl fun3 "Hello" -Force  # 执行 fun3 命令，传递参数
     #>
     [CmdletBinding()]
@@ -43,16 +43,60 @@ function tmpl {
     $config = Get-CustomConfig -JsonPath $jsonPath
     if (-not $config) { return }
 
-    # 无命令：显示列表
+    # 无命令：与 _cd/_tool 相同，用 questionary 上下键选择（tool_menu.py）
     if (-not $Command) {
-        Write-Host "可用命令:" -ForegroundColor Green
-        $config.PSObject.Properties | Sort-Object Name | ForEach-Object {
-            $cmdName = $_.Name
-            $desc = $_.Value.description
-            $pathInfo = if ($_.Value.script_path) { " ($($_.Value.script_path))" } else { " (默认 src\$cmdName.ps1)" }
-            Write-Host ("    {0,-20} - {1}{2}" -f $cmdName, $desc, $pathInfo)
+        $menuScript = $null
+        if ($env:MYSHELL) {
+            $c = Join-Path $env:MYSHELL "public\_script\tool_menu.py"
+            if (Test-Path $c) { $menuScript = $c }
         }
-        return
+        if (-not $menuScript) {
+            $rel = Join-Path $scriptDir "..\..\public\_script\tool_menu.py"
+            $abs = [System.IO.Path]::GetFullPath($rel)
+            if (Test-Path $abs) { $menuScript = $abs }
+        }
+
+        if ($menuScript -and (Get-Command python -ErrorAction SilentlyContinue)) {
+            $tempPick = [System.IO.Path]::GetTempFileName()
+            try {
+                & python $menuScript $jsonPath $tempPick
+                $exitMenu = $LASTEXITCODE
+                if ($exitMenu -ne 0) {
+                    Write-Warning "交互菜单异常 (退出码: $exitMenu)，改为文本列表。"
+                }
+                else {
+                    $rawPick = Get-Content -Path $tempPick -Raw -ErrorAction SilentlyContinue
+                    if (-not [string]::IsNullOrWhiteSpace($rawPick)) {
+                        $Command = $rawPick.Trim()
+                    }
+                    else {
+                        return
+                    }
+                }
+            }
+            finally {
+                if (Test-Path $tempPick) {
+                    Remove-Item -Path $tempPick -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
+        if (-not $Command) {
+            Write-Host "可用命令:" -ForegroundColor Green
+            $config.PSObject.Properties | Sort-Object Name | ForEach-Object {
+                $cmdName = $_.Name
+                $desc = $_.Value.description
+                $pathInfo = if ($_.Value.script_path) { " ($($_.Value.script_path))" } else { " (默认 src\$cmdName.ps1)" }
+                Write-Host ("    {0,-20} - {1}{2}" -f $cmdName, $desc, $pathInfo)
+            }
+            if (-not $menuScript) {
+                Write-Host "提示: 将 MyShell 的 public\_script\tool_menu.py 置于可发现路径，或设置 MYSHELL 以启用上下键菜单。" -ForegroundColor DarkGray
+            }
+            elseif (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+                Write-Host "提示: 未找到 python，无法启动交互菜单。" -ForegroundColor DarkGray
+            }
+            return
+        }
     }
 
     # 检查命令是否存在
@@ -167,11 +211,23 @@ function tmpl {
     }
 }
 
+# 与 tmpl 等价（复制模板后若将函数改名为 _xxx，可只保留一个并删掉此处）
+function _tmpl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0, Mandatory = $false)]
+        [string]$Command,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$ScriptArgs
+    )
+    & tmpl @PSBoundParameters
+}
+
 # --- Tab 补全器 ---
 $scriptDirForCompletion = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $script:tmpl_configPath = Join-Path $scriptDirForCompletion "config.json"
 
-Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock {
+$script:tmplCommandCompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $config = Get-CustomConfig -JsonPath $script:tmpl_configPath
@@ -184,3 +240,5 @@ Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock
         [System.Management.Automation.CompletionResult]::new($cmdName, $cmdName, 'ParameterValue', $desc)
     }
 }
+Register-ArgumentCompleter -CommandName tmpl -ParameterName Command -ScriptBlock $script:tmplCommandCompleter
+Register-ArgumentCompleter -CommandName _tmpl -ParameterName Command -ScriptBlock $script:tmplCommandCompleter

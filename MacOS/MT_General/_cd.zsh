@@ -18,8 +18,12 @@ _cd() {
     # 生成临时文件
     local temp_file=$(mktemp)
 
-    # 调用 Python 交互脚本
-    python3 "$py_script" "$config_path" "$temp_file"
+    # 有首参则直达对应项，否则交互选择（与 Windows _cd 一致）
+    if [[ $# -gt 0 ]]; then
+        python3 "$py_script" "$config_path" "$temp_file" "$1"
+    else
+        python3 "$py_script" "$config_path" "$temp_file"
+    fi
     local exit_code=$?
 
     # 读取目标路径

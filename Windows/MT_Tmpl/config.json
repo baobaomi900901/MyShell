@@ -14,6 +14,6 @@
   },
   "fun4": {
     "script_path": "@MYSHELL\\public\\_script\\fun4.ps1",
-    "description": "这是我的第4个方法"
+    "description": "这是我的第四个方法"
   }
 }

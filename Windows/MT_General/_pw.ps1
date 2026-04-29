@@ -1,7 +1,10 @@
 ﻿# Windows/MTGeneral/_pw.ps1
 
 function _pw {
-    param([string]$Query)   # 必须添加
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Query
+    )
 
     $myshell = $env:MYSHELL
     if (-not $myshell) {

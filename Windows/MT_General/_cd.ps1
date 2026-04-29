@@ -1,7 +1,12 @@
 ﻿# Windows/MTGeneral/cd_.ps1
 
 function _cd {
-    # 用途: cd 到指定目录
+    # 用途: cd 到指定目录；无参时交互选择，有参时直接跳转（键名可与 Tab 补全一致，支持 - 写法）
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Query
+    )
+
     $myshell = $env:MYSHELL
     if (-not $myshell) {
         Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
@@ -20,9 +25,14 @@ function _cd {
     $tempFile = [System.IO.Path]::GetTempFileName()
 
     try {
-        # 2. 调用 Python，传入 配置文件路径 和 临时文件路径
-        python $pyScript $configPath $tempFile $Query
-        
+        # 2. 调用 Python：有 Query 则直达，否则走交互菜单
+        if ($Query) {
+            python $pyScript $configPath $tempFile $Query
+        }
+        else {
+            python $pyScript $configPath $tempFile
+        }
+
         # 3. 读取临时文件中的路径
         $targetPath = Get-Content -Path $tempFile -Raw
         
