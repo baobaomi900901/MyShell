@@ -6,7 +6,7 @@ function setsh {
   Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
 }
 
-function _type {
+function type_ {
     # 用途: 查看方法是否存在, type_ {方法名}
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
@@ -22,7 +22,7 @@ function _type {
     }
 }
 
-function _op {
+function op_ {
     # 用途: 文件夹中打开当前路径
     param(
         [Parameter(ValueFromRemainingArguments = $true)]
@@ -69,7 +69,7 @@ function _op {
     }
 }
 
-function _now {
+function now_ {
     # 用途: 显示当前时间
     param(
         [string]$format = "default"
@@ -95,7 +95,7 @@ function _now {
     Write-Host "✅ 时间已复制到剪贴板" -ForegroundColor Cyan
 }
 
-function _new {
+function new_ {
     # 用途: 新建文件夹或文件
     param(
         [Parameter(Mandatory=$true)]
@@ -182,7 +182,7 @@ function _new {
     }
 }
 
-function _del {
+function del_ {
     # 用途: 删除文件或文件夹（支持多路径；目录递归删除）
     <#
     .SYNOPSIS
