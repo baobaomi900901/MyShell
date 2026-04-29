@@ -55,11 +55,10 @@ function cd_ {
     }
 }
 
-# Tab 补全功能（保持不变）
-Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
+# Tab 补全：cd_ 与 _cd（Mac 风格别名）共用
+$script:myshell_cdCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
-    # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
     if ($env:MYSHELL) {
         $configFile = Join-Path $env:MYSHELL "config\private\path.json"
     } else {
@@ -94,4 +93,7 @@ Register-ArgumentCompleter -CommandName cd_ -ScriptBlock {
     } catch {
         return
     }
+}
+foreach ($cmdName in @('cd_', '_cd')) {
+    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_cdCompleter
 }

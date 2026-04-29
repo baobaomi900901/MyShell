@@ -51,26 +51,27 @@ function pw_ {
     }
 }
 
-# Tab 补全（保持不变）
-Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
+# Tab 补全：pw_ 与 _pw 共用
+$script:myshell_pwCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
-    
+
+    if (-not $env:MYSHELL) { return }
     $configFile = Join-Path $env:MYSHELL "config\private\password.json"
-    
+
     if (-not (Test-Path $configFile)) {
         return
     }
-    
+
     try {
         $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
         $config = $raw | ConvertFrom-Json
-        
+
         $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.password -and $_.Value.password -ne $null
+            $_.Value.password -and $null -ne $_.Value.password
         } | ForEach-Object {
             $key = $_.Name
             $description = $_.Value.description
-            
+
             [System.Management.Automation.CompletionResult]::new(
                 $key,
                 $key,
@@ -78,11 +79,14 @@ Register-ArgumentCompleter -CommandName pw_ -ScriptBlock {
                 $description
             )
         }
-        
+
         $completionItems | Where-Object {
             $_.CompletionText -like "$wordToComplete*"
         }
     } catch {
         return
     }
+}
+foreach ($cmdName in @('pw_', '_pw')) {
+    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_pwCompleter
 }

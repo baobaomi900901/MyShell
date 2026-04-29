@@ -202,24 +202,37 @@ print("可用命令:", ", ".join(sorted(d.keys())))
     return 0
 }
 
-# 与 tmpl 等价
+# 与 tmpl 等价（命名与 Windows tmpl_/ _tmpl 对齐）
+tmpl_() {
+    tmpl "$@"
+}
+
 _tmpl() {
     tmpl "$@"
 }
 
 _tmpl_tab_for() {
-    local -a commands
+    local -a opts
     local config_file="$tmpl_SELFPATH/config.json"
+    opts=()
     if [[ -f "$config_file" ]]; then
-        commands=(${(f)"$(python3 -c '
+        local line
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && opts+=("$line")
+        done < <(python3 -c '
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
+p = sys.argv[1]
+with open(p, encoding="utf-8") as f:
     data = json.load(f)
-    for key in sorted(data.keys()):
-        print(key)
-' "$config_file")"})
+for key in sorted(data.keys()):
+    entry = data[key] or {}
+    desc = (entry.get("description") or "").replace("\n", " ").replace("\r", " ")
+    disp = key.replace("_", "-")
+    print("%s:%s" % (disp, desc))
+' "$config_file")
     fi
-    _describe 'command' commands
+    (( ${#opts[@]} )) || return 0
+    _describe -t targets command opts
 }
 
-compdef _tmpl_tab_for tmpl _tmpl
+compdef _tmpl_tab_for tmpl tmpl_ _tmpl

@@ -216,7 +216,7 @@ function tmpl_ {
 $script:MT_Tmpl_ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $script:MT_Tmpl_ConfigPath = Join-Path $script:MT_Tmpl_ScriptDir 'config.json'
 
-Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock {
+$script:myshell_tmplCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $configFile = $script:MT_Tmpl_ConfigPath
@@ -224,7 +224,7 @@ Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock {
     if (-not (Test-Path -LiteralPath $configFile)) {
         return
     }
-    
+
     try {
         $config = Get-Content -Path $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
@@ -248,3 +248,8 @@ Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock {
         return
     }
 }
+foreach ($cmdName in @('tmpl_', '_tmpl')) {
+    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_tmplCompleter
+}
+
+function _tmpl { tmpl_ @args }

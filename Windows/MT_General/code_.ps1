@@ -50,11 +50,10 @@ function code_ {
     }
 }
 
-# 注册 Tab 补全（保持之前正确的实现）
-Register-ArgumentCompleter -CommandName code_ -ScriptBlock {
+# Tab 补全：code_ 与 _code 共用
+$script:myshell_codeCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
 
-    # 确定配置文件路径（优先使用 $env:MYSHELL，否则回退到默认路径）
     if ($env:MYSHELL) {
         $configFile = Join-Path $env:MYSHELL "config\private\path_code.json"
     } else {
@@ -89,4 +88,7 @@ Register-ArgumentCompleter -CommandName code_ -ScriptBlock {
     } catch {
         return
     }
+}
+foreach ($cmdName in @('code_', '_code')) {
+    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_codeCompleter
 }

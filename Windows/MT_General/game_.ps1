@@ -137,26 +137,26 @@ function game_ {
     }
 }
 
-# Tab 补全功能（同样使用 UTF-8 读取配置）
-Register-ArgumentCompleter -CommandName game_ -ScriptBlock {
+# Tab 补全：game_ 与 _game 共用
+$script:myshell_gameCompleter = {
     param($wordToComplete, $commandAst, $cursorPosition)
-    
+
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
-    
+
     if (-not (Test-Path $configFile)) {
         return
     }
-    
+
     try {
         $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
         $config = $raw | ConvertFrom-Json
-        
+
         $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.win -and $_.Value.win -ne $null
+            $_.Value.win -and $null -ne $_.Value.win
         } | ForEach-Object {
             $key = $_.Name
             $description = $_.Value.description
-            
+
             [System.Management.Automation.CompletionResult]::new(
                 $key,
                 $key,
@@ -164,14 +164,17 @@ Register-ArgumentCompleter -CommandName game_ -ScriptBlock {
                 $description
             )
         }
-        
+
         $completionItems | Where-Object {
             $_.CompletionText -like "$wordToComplete*"
         }
-        
+
     } catch {
         return
     }
+}
+foreach ($cmdName in @('game_', '_game')) {
+    Register-ArgumentCompleter -CommandName $cmdName -ScriptBlock $script:myshell_gameCompleter
 }
 
 # 简单的编辑命令（用 VS Code 打开配置文件）
