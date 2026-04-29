@@ -50,9 +50,9 @@ function code_ {
     }
 }
 
-# Tab 补全
+# Tab 补全（绑定参数 Query）
 $script:myshell_codeCompleter = {
-    param($wordToComplete, $commandAst, $cursorPosition)
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     if ($env:MYSHELL) {
         $configFile = Join-Path $env:MYSHELL "config\private\path_code.json"
@@ -68,25 +68,38 @@ $script:myshell_codeCompleter = {
     try {
         $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.win -or $_.Value.mac
-        } | ForEach-Object {
-            $displayName = $_.Name -replace '_', '-'
-            $description = $_.Value.description -replace "`n", " "
+        $rows = @(
+            $config.PSObject.Properties | Where-Object { $_.Value.win -or $_.Value.mac } | ForEach-Object {
+                $displayName = $_.Name -replace '_', '-'
+                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
+                [PSCustomObject]@{ Insert = $displayName; Desc = $description }
+            }
+        )
+        $maxLen = 0
+        if ($rows.Count -gt 0) {
+            $maxLen = @($rows | ForEach-Object { $_.Insert.Length } | Measure-Object -Maximum).Maximum
+        }
+        $completionItems = foreach ($r in $rows) {
+            $listLabel = if ([string]::IsNullOrWhiteSpace($r.Desc)) {
+                $r.Insert
+            } else {
+                ('{0,-' + $maxLen + '}    -- {1}') -f $r.Insert, $r.Desc
+            }
             [System.Management.Automation.CompletionResult]::new(
-                $displayName,
-                $displayName,
+                $r.Insert,
+                $listLabel,
                 'ParameterValue',
-                $description
+                $r.Desc
             )
         }
 
+        $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
         $completionItems | Where-Object {
-            $_.CompletionText -like "$wordToComplete*"
+            $_.CompletionText -like "$wc*"
         }
 
     } catch {
         return
     }
 }
-Register-ArgumentCompleter -CommandName code_ -ScriptBlock $script:myshell_codeCompleter
+Register-ArgumentCompleter -CommandName code_ -ParameterName Query -ScriptBlock $script:myshell_codeCompleter

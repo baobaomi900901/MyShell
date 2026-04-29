@@ -222,10 +222,33 @@ Register-ArgumentCompleter -CommandName tool_ -ParameterName Command -ScriptBloc
     $config = Get-CustomConfig -JsonPath $script:tool_configPath
     if (-not $config) { return $null }
 
-    $allCommands = $config.PSObject.Properties.Name
-    $allCommands | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-        $cmdName = $_
-        $desc = $config.$cmdName.description
-        [System.Management.Automation.CompletionResult]::new($cmdName, $cmdName, 'ParameterValue', $desc)
+    $rows = @(
+        $config.PSObject.Properties | Where-Object {
+            $_.Value -and ($_.Value.script_path -or $_.Value.description)
+        } | ForEach-Object {
+            $key = $_.Name
+            $show = $key -replace '_', '-'
+            $desc = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
+            [PSCustomObject]@{ Insert = $key; Show = $show; Desc = $desc }
+        }
+    )
+    $maxLen = 0
+    if ($rows.Count -gt 0) {
+        $maxLen = @($rows | ForEach-Object { $_.Show.Length } | Measure-Object -Maximum).Maximum
+    }
+    foreach ($r in $rows) {
+        $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
+        if ($r.Insert -notlike "$wc*" -and $r.Show -notlike "$wc*") { continue }
+        $listLabel = if ([string]::IsNullOrWhiteSpace($r.Desc)) {
+            $r.Show
+        } else {
+            ('{0,-' + $maxLen + '}    -- {1}') -f $r.Show, $r.Desc
+        }
+        [System.Management.Automation.CompletionResult]::new(
+            $r.Insert,
+            $listLabel,
+            'ParameterValue',
+            $r.Desc
+        )
     }
 }

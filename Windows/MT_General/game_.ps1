@@ -137,9 +137,9 @@ function game_ {
     }
 }
 
-# Tab 补全
+# Tab 补全（绑定参数 action）
 $script:myshell_gameCompleter = {
-    param($wordToComplete, $commandAst, $cursorPosition)
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
 
@@ -151,29 +151,42 @@ $script:myshell_gameCompleter = {
         $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
         $config = $raw | ConvertFrom-Json
 
-        $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value.win -and $null -ne $_.Value.win
-        } | ForEach-Object {
-            $key = $_.Name
-            $description = $_.Value.description
-
+        $rows = @(
+            $config.PSObject.Properties | Where-Object {
+                $_.Value.win -and $null -ne $_.Value.win
+            } | ForEach-Object {
+                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
+                [PSCustomObject]@{ Insert = $_.Name; Desc = $description }
+            }
+        )
+        $maxLen = 0
+        if ($rows.Count -gt 0) {
+            $maxLen = @($rows | ForEach-Object { $_.Insert.Length } | Measure-Object -Maximum).Maximum
+        }
+        $completionItems = foreach ($r in $rows) {
+            $listLabel = if ([string]::IsNullOrWhiteSpace($r.Desc)) {
+                $r.Insert
+            } else {
+                ('{0,-' + $maxLen + '}    -- {1}') -f $r.Insert, $r.Desc
+            }
             [System.Management.Automation.CompletionResult]::new(
-                $key,
-                $key,
+                $r.Insert,
+                $listLabel,
                 'ParameterValue',
-                $description
+                $r.Desc
             )
         }
 
+        $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
         $completionItems | Where-Object {
-            $_.CompletionText -like "$wordToComplete*"
+            $_.CompletionText -like "$wc*"
         }
 
     } catch {
         return
     }
 }
-Register-ArgumentCompleter -CommandName game_ -ScriptBlock $script:myshell_gameCompleter
+Register-ArgumentCompleter -CommandName game_ -ParameterName action -ScriptBlock $script:myshell_gameCompleter
 
 # 简单的编辑命令（用 VS Code 打开配置文件）
 function edit-game-config {

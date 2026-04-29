@@ -271,3 +271,21 @@ function Resolve-ScriptPath {
 
     return $path
 }
+
+#region PSReadLine：用菜单补全才能看到「名称 + -- + 描述」（默认 Tab=Complete 只有纯文本替换）
+try {
+    if ($Host.Name -in @('ConsoleHost', 'Visual Studio Code Host') -and (Get-Module -ListAvailable -Name PSReadLine)) {
+        Import-Module PSReadLine -ErrorAction Stop
+        # Tab → 弹出可选列表（显示 CompletionResult 的 ListItemText）；否则只能看到插入词，看不到描述
+        Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete -ErrorAction SilentlyContinue
+        # 菜单下方显示 ToolTip（描述）；旧版 PSReadLine 可能无此参数
+        try {
+            Set-PSReadLineOption -ShowToolTips -ErrorAction Stop
+        } catch {
+            # ignore
+        }
+    }
+} catch {
+    # 未安装 PSReadLine 或非交互主机时忽略
+}
+#endregion

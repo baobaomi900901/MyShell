@@ -217,7 +217,7 @@ $script:MT_Tmpl_ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Pa
 $script:MT_Tmpl_ConfigPath = Join-Path $script:MT_Tmpl_ScriptDir 'config.json'
 
 $script:myshell_tmplCompleter = {
-    param($wordToComplete, $commandAst, $cursorPosition)
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $configFile = $script:MT_Tmpl_ConfigPath
 
@@ -228,24 +228,39 @@ $script:myshell_tmplCompleter = {
     try {
         $config = Get-Content -Path $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        $completionItems = $config.PSObject.Properties | Where-Object {
-            $_.Value -and ($_.Value.script_path -or $_.Value.description)
-        } | ForEach-Object {
-            $displayName = $_.Name -replace '_', '-'
-            $description = ($_.Value.description -replace "`n", " ")
+        # CompletionText 必须用 config 真实键名；ListItem 用 “连字符名 + 描述” 与 zsh 类似
+        $rows = @(
+            $config.PSObject.Properties | Where-Object {
+                $_.Value -and ($_.Value.script_path -or $_.Value.description)
+            } | ForEach-Object {
+                $key = $_.Name
+                $show = $key -replace '_', '-'
+                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
+                [PSCustomObject]@{ Insert = $key; Show = $show; Desc = $description }
+            }
+        )
+        $maxLen = 0
+        if ($rows.Count -gt 0) {
+            $maxLen = @($rows | ForEach-Object { $_.Show.Length } | Measure-Object -Maximum).Maximum
+        }
+        $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
+        $completionItems = foreach ($r in $rows) {
+            if ($r.Insert -notlike "$wc*" -and $r.Show -notlike "$wc*") { continue }
+            $listLabel = if ([string]::IsNullOrWhiteSpace($r.Desc)) {
+                $r.Show
+            } else {
+                ('{0,-' + $maxLen + '}    -- {1}') -f $r.Show, $r.Desc
+            }
             [System.Management.Automation.CompletionResult]::new(
-                $displayName,
-                $displayName,
+                $r.Insert,
+                $listLabel,
                 'ParameterValue',
-                $description
+                $r.Desc
             )
         }
-
-        $completionItems | Where-Object {
-            $_.CompletionText -like "$wordToComplete*"
-        }
+        $completionItems
     } catch {
         return
     }
 }
-Register-ArgumentCompleter -CommandName tmpl_ -ScriptBlock $script:myshell_tmplCompleter
+Register-ArgumentCompleter -CommandName tmpl_ -ParameterName Command -ScriptBlock $script:myshell_tmplCompleter
