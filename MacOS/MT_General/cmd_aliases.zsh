@@ -13,7 +13,7 @@ _myshell_path_tab() {
   done < <(python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 for k in sorted(d.keys()):
     v = d[k]
@@ -42,7 +42,7 @@ _myshell_code_tab() {
   done < <(python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 for k in sorted(d.keys()):
     v = d[k]
@@ -71,7 +71,7 @@ _myshell_pw_tab() {
   done < <(python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 for k in sorted(d.keys()):
     v = d[k]

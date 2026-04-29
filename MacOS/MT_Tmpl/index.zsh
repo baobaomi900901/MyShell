@@ -8,7 +8,7 @@ _tmpl_json_ignore_exit() {
     local cfg="$1" c="$2"
     python3 -c '
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
+with open(sys.argv[1], encoding="utf-8-sig") as f:
     data = json.load(f)
 cmd = sys.argv[2]
 entry = data.get(cmd) or {}
@@ -21,7 +21,7 @@ _tmpl_json_description() {
     local cfg="$1" c="$2"
     python3 -c '
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
+with open(sys.argv[1], encoding="utf-8-sig") as f:
     data = json.load(f)
 cmd = sys.argv[2]
 print((data.get(cmd) or {}).get("description", "") or "")
@@ -51,7 +51,7 @@ tmpl_() {
             python3 "$menu_script" "$config_file" "$temp"
             exit_menu=$?
             if [[ $exit_menu -eq 0 && -f "$temp" ]]; then
-                picked=$(python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); print(p.read_text(encoding="utf-8").strip() if p.exists() else "")' "$temp")
+                picked=$(python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); print(p.read_text(encoding="utf-8-sig").strip() if p.exists() else "")' "$temp")
             else
                 picked=""
             fi
@@ -76,7 +76,7 @@ tmpl_() {
 import json
 import sys
 
-with open(sys.argv[1], "r", encoding="utf-8") as f:
+with open(sys.argv[1], "r", encoding="utf-8-sig") as f:
     data = json.load(f)
 
 if not data:
@@ -101,7 +101,7 @@ for name, config in sorted(data.items()):
 import json
 import sys
 
-with open(sys.argv[1], "r", encoding="utf-8") as f:
+with open(sys.argv[1], "r", encoding="utf-8-sig") as f:
     data = json.load(f)
 
 cmd = sys.argv[2]
@@ -113,7 +113,7 @@ else:
         echo "未知命令: $cmd" >&2
         python3 -c '
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
+with open(sys.argv[1], encoding="utf-8-sig") as f:
     d = json.load(f)
 print("可用命令:", ", ".join(sorted(d.keys())))
 ' "$config_file" >&2
@@ -213,7 +213,7 @@ _tmpl_tab_for() {
         done < <(python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     data = json.load(f)
 for key in sorted(data.keys()):
     entry = data[key] or {}

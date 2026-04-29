@@ -61,8 +61,13 @@ def load_json_config(config_path, template=""):
         sys.exit(1)
 
     try:
-        with open(config_path, 'r', encoding='utf-8-sig') as f:
-            return json.load(f)
+        # 二进制读入后去掉 UTF-8 BOM，避免部分环境下 utf-8-sig 仍报 Unexpected UTF-8 BOM
+        with open(config_path, 'rb') as f:
+            raw = f.read()
+        if raw.startswith(b'\xef\xbb\xbf'):
+            raw = raw[3:]
+        text = raw.decode('utf-8')
+        return json.loads(text)
     except Exception as e:
         print(f"{RED}❌ JSON 解析失败: {e}{RESET}")
         sys.exit(1)

@@ -22,7 +22,7 @@ game_() {
     python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 print("可用游戏:")
 for k in sorted(d.keys()):
@@ -40,7 +40,7 @@ for k in sorted(d.keys()):
   source_path=$(python3 -c '
 import json, sys, os
 p, key = sys.argv[1], sys.argv[2]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 if key not in d:
     sys.exit(2)
@@ -86,7 +86,7 @@ _myshell_game_tab() {
   done < <(python3 -c '
 import json, sys
 p = sys.argv[1]
-with open(p, encoding="utf-8") as f:
+with open(p, encoding="utf-8-sig") as f:
     d = json.load(f)
 for k in sorted(d.keys()):
     v = d[k]
