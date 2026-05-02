@@ -22,50 +22,38 @@ function type_ {
     }
 }
 
+
 function op_ {
     # 用途: 文件夹中打开当前路径
+    <#
+    .SYNOPSIS
+        在 Windows 资源管理器或默认程序中打开指定路径。
+    .DESCRIPTION
+        支持同时打开多个文件/文件夹，不传参则打开当前目录。
+    .EXAMPLE
+        op_                     # 打开当前目录
+        op_ D:\Projects         # 打开 D:\Projects 文件夹
+        op_ .\README.md .\src   # 同时打开文件和文件夹
+    #>
+    [CmdletBinding()]
     param(
-        [Parameter(ValueFromRemainingArguments = $true)]
+        # 接收所有剩余参数作为路径
+        [Parameter(ValueFromRemainingArguments)]
         [string[]]$Paths
     )
 
-    # 如果没有传入参数，默认打开当前目录
-    if ($Paths.Count -eq 0) {
+    # 默认打开当前目录
+    if (-not $Paths -or $Paths.Count -eq 0) {
         $Paths = @('.')
     }
 
-    # 兼容判断操作系统
-    if ($PSVersionTable.PSVersion.Major -ge 6) {
-        # PowerShell Core 6+ 可直接使用自动变量
-        $isWindows = $IsWindows
-        $isMacOS = $IsMacOS
-        $isLinux = $IsLinux
-    } else {
-        # Windows PowerShell 5.1 只能通过环境变量或 OS 平台判断
-        $isWindows = $env:OS -eq 'Windows_NT'
-        $isMacOS = $false  # 默认不认为在 macOS 上运行 Windows PowerShell
-        $isLinux = $false
-    }
-
-    # 根据操作系统选择打开命令
-    if ($isWindows) {
-        foreach ($path in $Paths) {
-            # 用 Invoke-Item 打开文件或文件夹
-            Invoke-Item $path
-            Write-Host "已打开: $path"
+    foreach ($path in $Paths) {
+        if (-not (Test-Path -LiteralPath $path)) {
+            Write-Warning "路径不存在，已跳过: $path"
+            continue
         }
-    } elseif ($isMacOS) {
-        # macOS 使用 open 命令
-        open $Paths
-        Write-Host "执行 open $Paths"
-    } elseif ($isLinux) {
-        # Linux 使用 xdg-open
-        foreach ($path in $Paths) {
-            xdg-open $path
-            Write-Host "已打开: $path"
-        }
-    } else {
-        Write-Error "无法识别的操作系统"
+        Invoke-Item -LiteralPath $path
+        Write-Verbose "已打开: $path"
     }
 }
 
