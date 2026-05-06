@@ -123,3 +123,66 @@ function glocal {
     # 用途: 执行 "git branch -D local", 删除本地分支
     git log origin/develop..HEAD --oneline
 }
+
+function gswift {
+    # 用途: 无参时像 cd_ 一样用 questionary 上下键选分支后 git switch；有参时直接 git switch <Branch>
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Branch
+    )
+
+    if ($Branch) {
+        git switch $Branch
+        return
+    }
+
+    $myshell = $env:MYSHELL
+    if (-not $myshell) {
+        Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
+        return
+    }
+
+    $pyScript = Join-Path $myshell "public\_script\gswift.py"
+    if (-not (Test-Path $pyScript)) {
+        Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
+        return
+    }
+
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        python $pyScript $tempFile
+        if ($LASTEXITCODE -ne 0) {
+            return
+        }
+        $target = Get-Content -Path $tempFile -Raw -ErrorAction SilentlyContinue
+        if (-not [string]::IsNullOrWhiteSpace($target)) {
+            git switch ($target.Trim())
+        }
+    } finally {
+        if (Test-Path $tempFile) {
+            Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+$script:myshell_gswiftCompleter = {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+    $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
+
+    $locals = @()
+    $remotes = @()
+    try {
+        $locals = @(git for-each-ref refs/heads/ --format="%(refname:short)" 2>$null)
+        $remotes = @(git for-each-ref refs/remotes/ --format="%(refname:short)" 2>$null | Where-Object { $_ -and ($_ -notmatch '/HEAD$') })
+    } catch {
+        return
+    }
+
+    foreach ($name in @($locals) + @($remotes)) {
+        if ($name -like "$wc*") {
+            [System.Management.Automation.CompletionResult]::new($name, $name, 'ParameterValue', $name)
+        }
+    }
+}
+Register-ArgumentCompleter -CommandName gswift -ParameterName Branch -ScriptBlock $script:myshell_gswiftCompleter
