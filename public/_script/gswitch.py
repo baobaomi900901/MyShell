@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# public/_script/gswift.py
+# public/_script/gswitch.py
 # 交互选择分支并写入临时文件，供 PowerShell 执行 git switch（风格同 cd_.ps1 + common.interactive_select）
 
 from __future__ import annotations

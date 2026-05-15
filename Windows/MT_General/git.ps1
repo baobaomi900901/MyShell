@@ -124,7 +124,7 @@ function glocal {
     git log origin/develop..HEAD --oneline
 }
 
-function gswift {
+function gswitch {
     # 用途: 无参时像 cd_ 一样用 questionary 上下键选分支后 git switch；有参时直接 git switch <Branch>
     param(
         [Parameter(Mandatory = $false, Position = 0)]
@@ -142,7 +142,7 @@ function gswift {
         return
     }
 
-    $pyScript = Join-Path $myshell "public\_script\gswift.py"
+    $pyScript = Join-Path $myshell "public\_script\gswitch.py"
     if (-not (Test-Path $pyScript)) {
         Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
         return
@@ -165,7 +165,7 @@ function gswift {
     }
 }
 
-$script:myshell_gswiftCompleter = {
+$script:myshell_gswitchCompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $wc = if ($null -eq $wordToComplete) { '' } else { $wordToComplete }
@@ -185,4 +185,4 @@ $script:myshell_gswiftCompleter = {
         }
     }
 }
-Register-ArgumentCompleter -CommandName gswift -ParameterName Branch -ScriptBlock $script:myshell_gswiftCompleter
+Register-ArgumentCompleter -CommandName gswitch -ParameterName Branch -ScriptBlock $script:myshell_gswitchCompleter
