@@ -1,0 +1,3 @@
+pym(){
+  python main.py "$@"
+}
