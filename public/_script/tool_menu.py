@@ -32,7 +32,12 @@ def main() -> None:
         print(f"{RED}配置为空或格式错误{RESET}", file=sys.stderr)
         sys.exit(1)
 
-    names = sorted(data.keys(), key=str.lower)
+    def _sort_key(name):
+        entry = data.get(name) or {}
+        idx = entry.get("index") if isinstance(entry, dict) else None
+        return (0, idx, name.lower()) if idx is not None else (1, 0, name.lower())
+
+    names = sorted(data.keys(), key=_sort_key)
     max_len = max(len(n) for n in names)
     items = []
     for name in names:

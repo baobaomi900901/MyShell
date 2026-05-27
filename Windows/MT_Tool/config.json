@@ -23,5 +23,10 @@
     "script_path": ".\\src\\set_lite_alias.py",
     "description": "lite 函数增加别名方法",
     "ignore_exit_code": true
+  },
+  "daily_newspaper": {
+    "script_path": ".\\src\\daily_newspaper.py",
+    "description": "日报",
+    "index": 1
   }
 }
