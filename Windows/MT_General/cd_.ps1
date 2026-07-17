@@ -34,7 +34,7 @@ function cd_ {
         }
 
         # 3. 读取临时文件中的路径
-        $targetPath = Get-Content -Path $tempFile -Raw
+        $targetPath = Get-Content -Path $tempFile -Raw -Encoding UTF8
         
         if (-not [string]::IsNullOrWhiteSpace($targetPath)) {
             $targetPath = $targetPath.Trim()

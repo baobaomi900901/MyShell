@@ -73,9 +73,7 @@ FALLBACK_EXPIRY_INDEX = 0
 FALLBACK_EXPIRY_KEYWORD = "日期"
 
 # ----- 可执行文件路径 -----
-DEFAULT_EXE_RELATIVE = Path("KingAutomate/Licenses/LiteLicense/LiteLicense.exe")
-PROJECT_ROOT_ENV_VAR = "AOM_ROOT"          # 可选环境变量，用于覆盖项目根目录
-DEFAULT_PROJECT_ROOT = r"D:\Code\aom"      # 默认项目根目录
+DEFAULT_EXE_RELATIVE = Path("config/private/tools/LiteLicense.exe")
 # ============================================================
 
 def resolve_password_file():
@@ -316,10 +314,12 @@ def copy_authorization_code_to_clipboard(window):
     return extract_license_code_from_window(window) is not None
 
 def get_default_exe_path():
-    """获取默认的 LiteLicense.exe 路径（支持环境变量覆盖）"""
-    project_root = os.environ.get(PROJECT_ROOT_ENV_VAR, DEFAULT_PROJECT_ROOT)
-    exe_path = Path(project_root) / DEFAULT_EXE_RELATIVE
-    return exe_path
+    """获取 $MYSHELL 下的 LiteLicense.exe 路径。"""
+    myshell = os.environ.get("MYSHELL")
+    if not myshell:
+        print("错误: 环境变量 MYSHELL 未设置，无法定位 LiteLicense.exe。", file=sys.stderr)
+        sys.exit(1)
+    return Path(myshell) / DEFAULT_EXE_RELATIVE
 
 def wait_for_window(title, max_seconds=MAX_WAIT_SECONDS):
     """等待窗口出现，返回窗口句柄或None"""

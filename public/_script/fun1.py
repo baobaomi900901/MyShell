@@ -1,4 +1,4 @@
-﻿# fun1.py
+# fun1.py
 import sys
 from pathlib import Path
 

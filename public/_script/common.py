@@ -35,6 +35,7 @@ except ImportError:
 try:
     import questionary
     from questionary import Style as QStyle
+    from prompt_toolkit.keys import Keys
     QUESTIONARY_AVAILABLE = True
 except ImportError:
     QUESTIONARY_AVAILABLE = False
@@ -85,7 +86,7 @@ def generate_back_line(max_len, arrow=" 🔙 "):
     return back_line
 
 
-def interactive_select(title, items, instruction="(按 ↑/↓ 选择，回车确认，Ctrl+C 退出)"):
+def interactive_select(title, items, instruction="(按 ↑/↓ 选择，回车确认，Esc/Ctrl+C 退出)"):
     """
     通用交互式选择菜单。
     items: list of tuple (key, display_text, value) 或 (key, display_text, value)
@@ -117,12 +118,18 @@ def interactive_select(title, items, instruction="(按 ↑/↓ 选择，回车�
         ('highlighted', 'fg:#FF8C00 bold'),
     ])
 
-    selected = questionary.select(
+    question = questionary.select(
         title,
         choices=choices,
         instruction=instruction,
         style=custom_style
-    ).ask()
+    )
+
+    @question.application.key_bindings.add(Keys.Escape, eager=True)
+    def cancel(event):
+        event.app.exit(result=None)
+
+    selected = question.ask()
 
     if selected is None:
         sys.exit(0)

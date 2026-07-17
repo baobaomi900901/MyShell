@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -8,6 +8,7 @@ import re
 import argparse
 import ast
 import sys
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional, Any
 
@@ -225,7 +226,8 @@ def load_pip_config() -> Tuple[List[str], Dict[str, List[str]]]:
 # ----------------------------------------------------------------------
 def detect_terminal() -> str:
     """检测终端类型（基于环境变量 TERM_PROGRAM）"""
-    return "vscode" if os.environ.get('TERM_PROGRAM') == 'vscode' else "windows"
+    terminal = os.environ.get('TERM_PROGRAM', '').lower()
+    return terminal if terminal in {'vscode', 'tabby'} else 'windows'
 
 def send_combo(keys: List[str]) -> None:
     """按下并释放组合键（仅 Windows 终端重启流程使用，延迟导入 keyboard）"""
@@ -244,9 +246,21 @@ def send_vscode_combo() -> None:
     """Ctrl+Shift+` （VS Code 新建终端）"""
     send_combo(['ctrl', 'shift', '`'])
 
-def send_windows_combo() -> None:
-    """Ctrl+Shift+t （Windows 恢复已关闭标签页）"""
-    send_combo(['ctrl', 'shift', 't'])
+def open_terminal(name: str, command: List[str]) -> None:
+    try:
+        subprocess.Popen(command)
+    except OSError as e:
+        print(f"无法打开新的 {name} 标签页: {e}", file=sys.stderr)
+        sys.exit(10)
+
+def open_tabby_terminal() -> None:
+    """在当前 Tabby 窗口中用当前工作目录打开新标签页。"""
+    executable = Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs' / 'Tabby' / 'Tabby.exe'
+    open_terminal('Tabby', [str(executable), 'open', os.getcwd()])
+
+def open_windows_terminal() -> None:
+    """在当前 Windows Terminal 中用当前工作目录打开新标签页。"""
+    open_terminal('Windows Terminal', ["wt.exe", "-w", "0", "new-tab", "-d", os.getcwd()])
 
 # ----------------------------------------------------------------------
 # 主程序
@@ -437,11 +451,14 @@ def main() -> None:
             time.sleep(2)
             send_vscode_combo()
             print("组合键已发送。")
+        elif terminal_type == "tabby":
+            print("正在当前 Tabby 窗口中打开新标签页...")
+            open_tabby_terminal()
+            print(f"新标签页已打开：{os.getcwd()}")
         else:
-            print("即将发送 Ctrl+Shift+t 到 Windows（恢复已关闭标签页），请确保焦点在浏览器或资源管理器...")
-            time.sleep(2)
-            send_windows_combo()
-            print("组合键已发送。")
+            print("正在当前 Windows Terminal 中打开新标签页...")
+            open_windows_terminal()
+            print(f"新标签页已打开：{os.getcwd()}")
 
         sys.exit(1)
 

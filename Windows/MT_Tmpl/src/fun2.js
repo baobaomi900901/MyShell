@@ -1,4 +1,4 @@
-﻿// .\Windows\Hooks\src\fun2.js
+// .\Windows\Hooks\src\fun2.js
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';

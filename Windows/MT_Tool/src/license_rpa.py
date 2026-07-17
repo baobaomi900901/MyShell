@@ -3,6 +3,7 @@ import json
 import subprocess
 import time
 import logging
+from pathlib import Path
 import uiautomation as auto
 
 # 配置日志
@@ -39,6 +40,14 @@ def read_password_from_json():
     except Exception as e:
         logging.error(f"读取文件时发生错误: {e}")
         return None
+
+def get_default_exe_path():
+    """获取 $MYSHELL 下的 LicensesMake.exe 路径。"""
+    myshell = os.environ.get('MYSHELL')
+    if not myshell:
+        logging.error("环境变量 MYSHELL 未设置，无法定位 LicensesMake.exe")
+        return None
+    return Path(myshell) / 'config' / 'private' / 'tools' / 'LicensesMake.exe'
 
 def set_control_text(control, text):
     """设置控件文本，优先使用 ValuePattern，失败则回退到 SendKeys"""
@@ -138,7 +147,9 @@ def main():
         logging.error("无法获取密码，脚本退出。")
         return
 
-    exe_path = r"D:\Code\aom\Tools\LicensesMake\LicensesMake.exe"
+    exe_path = get_default_exe_path()
+    if not exe_path:
+        return
     launch_and_fill_fields(exe_path, password)
 
 if __name__ == "__main__":
