@@ -32,3 +32,28 @@ function pym {
   #>
   python main.py @args
 }
+
+function wsdk {
+    # 用途: 简化 python test_demo_web_sdk.py 的调用
+  <#
+  .SYNOPSIS
+      简化 test_demo_web_sdk.py 的调用
+  .DESCRIPTION
+      将所有传入的参数原样转发给当前路径的下的 test_demo_web_sdk.py。
+      相当于每次输入 python test_demo_web_sdk.py 的快捷方式。
+  .EXAMPLE
+      wsdk [args1] [args2] [...]
+  #>
+  py test_demo_web_sdk.py @args
+}
+
+function npxserver {
+    # 用途: 启动 npx http-server -p [端口] 服务
+    param(
+        [int]$Port = 1990,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$RemainingArgs
+    )
+
+    npx http-server -p $Port @RemainingArgs
+}
