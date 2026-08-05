@@ -154,10 +154,40 @@ function gswitch {
         if ($LASTEXITCODE -ne 0) {
             return
         }
-        $target = Get-Content -Path $tempFile -Raw -ErrorAction SilentlyContinue
-        if (-not [string]::IsNullOrWhiteSpace($target)) {
-            git switch ($target.Trim())
+        $selection = Get-Content -Path $tempFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        if ([string]::IsNullOrWhiteSpace($selection)) {
+            return
         }
+
+        $parts = $selection.Trim() -split "`t", 2
+        if ($parts.Count -ne 2 -or [string]::IsNullOrWhiteSpace($parts[1])) {
+            Write-Host "❌ 无效的分支选择结果" -ForegroundColor Red
+            return
+        }
+
+        $source = $parts[0]
+        $ref = $parts[1]
+        if ($source -eq 'local') {
+            git switch $ref
+            return
+        }
+        if ($source -eq 'remote') {
+            $localBranch = ($ref -split '/', 2)[1]
+            if ([string]::IsNullOrWhiteSpace($localBranch)) {
+                Write-Host "❌ 无效的远端分支: $ref" -ForegroundColor Red
+                return
+            }
+
+            git show-ref --verify --quiet "refs/heads/$localBranch"
+            if ($LASTEXITCODE -eq 0) {
+                git switch $localBranch
+            } else {
+                git switch --track $ref
+            }
+            return
+        }
+
+        Write-Host "❌ 未知的分支来源: $source" -ForegroundColor Red
     } finally {
         if (Test-Path $tempFile) {
             Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue

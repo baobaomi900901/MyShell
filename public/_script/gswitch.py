@@ -58,11 +58,6 @@ def _list_remotes() -> list[str]:
     return out
 
 
-def _switch_arg_for_remote(ref: str) -> str:
-    """传给 git switch 的短名：origin/hotfix/x -> hotfix/x"""
-    return ref.split("/", 1)[1]
-
-
 def build_branch_items(
     current: str, locals_: list[str], remotes: list[str]
 ) -> list[tuple[str, str, str]]:
