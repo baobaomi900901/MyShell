@@ -63,6 +63,26 @@ def _switch_arg_for_remote(ref: str) -> str:
     return ref.split("/", 1)[1]
 
 
+def build_branch_items(
+    current: str, locals_: list[str], remotes: list[str]
+) -> list[tuple[str, str, str]]:
+    locals_sorted = sorted(locals_, key=lambda branch: (branch != current, branch.lower()))
+    remotes_sorted = sorted(
+        (ref for ref in remotes if not ref.endswith("/HEAD")), key=str.lower
+    )
+    items = [
+        (
+            branch,
+            f"{'* ' if branch == current else '  '}[本地] {branch}",
+            f"local\t{branch}",
+        )
+        for branch in locals_sorted
+    ]
+    items.extend(
+        (ref, f"  [远端] {ref}", f"remote\t{ref}") for ref in remotes_sorted
+    )
+    return items
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"{RED}❌ 参数不足：需要临时文件路径{RESET}")
@@ -72,35 +92,12 @@ def main() -> None:
     _ensure_git_repo()
 
     current = _current_branch()
-    locals_ = _list_locals()
-    local_set = set(locals_)
+    items = build_branch_items(current, _list_locals(), _list_remotes())
 
-    remotes_all = _list_remotes()
-    remotes_filtered: list[str] = []
-    for ref in remotes_all:
-        tail = _switch_arg_for_remote(ref)
-        if tail in local_set:
-            continue
-        remotes_filtered.append(ref)
-    remotes_filtered.sort(key=str.lower)
-
-    locals_sorted = sorted(locals_, key=lambda b: (b != current, b.lower()))
-
-    if not locals_sorted and not remotes_filtered:
+    if not items:
         print(f"{YELLOW}没有可选分支。{RESET}")
         sys.exit(0)
 
-    items: list[tuple[str, str, str]] = []
-
-    for b in locals_sorted:
-        mark = "* " if b == current else "  "
-        display = f"{mark}{b}"
-        items.append((b, display, b))
-
-    for ref in remotes_filtered:
-        display = f"  {ref}"
-        arg = _switch_arg_for_remote(ref)
-        items.append((ref, display, arg))
 
     _, value = interactive_select(
         "选择要切换的分支:",
