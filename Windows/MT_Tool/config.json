@@ -28,5 +28,9 @@
     "script_path": ".\\src\\daily_newspaper.py",
     "description": "日报",
     "index": 1
+  },
+  "copy_lite_lnc": {
+    "script_path": ".\\src\\copy_lite_lnc.py",
+    "description": "复制lite.lnc"
   }
 }

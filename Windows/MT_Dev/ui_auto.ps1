@@ -45,20 +45,76 @@ function Resolve-FirstExistingPath {
 }
 
 function bdauto {
-    param([switch] $FullRuntime)
+    param(
+        [switch] $FullRuntime,
+        [switch] $InstallWeb
+    )
 
     $ErrorActionPreference = "Stop"
     $orig = Get-Location
     $appDir = Resolve-WinUiAutoAppDir
     $winUiRoot = Resolve-WinUiAutoRoot $appDir
-    $ensureZip = Resolve-FirstExistingPath $winUiRoot @(
-        "scripts\ensure_uipilot_runtime_zip.ps1",
-        "scripts\ensure_nauto_runtime_zip.ps1"
-    )
+    $uiautomaIdentityPath = Join-Path $winUiRoot "config\uiautoma_identity_contract.json"
+    $uiautomaIdentity = $null
+    if (Test-Path -LiteralPath $uiautomaIdentityPath) {
+        try {
+            $uiautomaIdentity = Get-Content -Raw -Encoding UTF8 -LiteralPath $uiautomaIdentityPath | ConvertFrom-Json
+        }
+        catch {
+            throw "Invalid UIAutoma identity contract: $($_.Exception.Message)"
+        }
+        if (
+            $uiautomaIdentity.product.slug -ne "uiautoma" -or
+            $uiautomaIdentity.runtime.environmentPrefix -ne "UIAUTOMA_"
+        ) {
+            throw "Unsupported UIAutoma identity contract: $uiautomaIdentityPath"
+        }
+    }
+    $isUiAutomaRepo = $null -ne $uiautomaIdentity
+
+    if ($isUiAutomaRepo -and $FullRuntime) {
+        throw "-FullRuntime is unavailable for UIAutoma: legacy runtime ZIP production is retired. Omit -FullRuntime."
+    }
+
+    $ensureZip = $null
+    if (-not $isUiAutomaRepo) {
+        $ensureZip = Resolve-FirstExistingPath $winUiRoot @(
+            "scripts\ensure_uipilot_runtime_zip.ps1",
+            "scripts\ensure_nauto_runtime_zip.ps1"
+        )
+    }
     $nativeHostBuild = $null
     $nativeHostBuildCandidate = Join-Path $winUiRoot "chrome\native_host\build_native_host.py"
     if (Test-Path -LiteralPath $nativeHostBuildCandidate) {
         $nativeHostBuild = (Resolve-Path -LiteralPath $nativeHostBuildCandidate).Path
+    }
+    $storePluginBuild = $null
+    $storePluginBuildCandidate = Join-Path $winUiRoot "chrome\build_store_plugin.mjs"
+    if (Test-Path -LiteralPath $storePluginBuildCandidate) {
+        $storePluginBuild = (Resolve-Path -LiteralPath $storePluginBuildCandidate).Path
+    }
+    $storePluginOut = if ($isUiAutomaRepo) {
+        $uiautomaUserDataRoot = [Environment]::ExpandEnvironmentVariables(
+            [string] $uiautomaIdentity.app.userDataRoot
+        )
+        if (
+            [string]::IsNullOrWhiteSpace($uiautomaUserDataRoot) -or
+            $uiautomaUserDataRoot -match "%[^%]+%"
+        ) {
+            throw "Cannot resolve UIAutoma userDataRoot from identity contract"
+        }
+        Join-Path $uiautomaUserDataRoot "bdauto-store-plugin"
+    }
+    else {
+        Join-Path $env:LOCALAPPDATA "UiPilot\bdauto-store-plugin"
+    }
+    $webStackInstaller = $null
+    $webStackInstallerCandidate = Join-Path $winUiRoot "chrome\build_install_local.py"
+    if ($InstallWeb) {
+        if (-not (Test-Path -LiteralPath $webStackInstallerCandidate)) {
+            throw "Web Stack installer not found: $webStackInstallerCandidate"
+        }
+        $webStackInstaller = (Resolve-Path -LiteralPath $webStackInstallerCandidate).Path
     }
     $devTauri = Join-Path $winUiRoot "scripts\dev_tauri.ps1"
 
@@ -83,25 +139,77 @@ function bdauto {
         npm run build
         if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
 
+        if ($InstallWeb) {
+            Write-Host "==> Building and installing Chrome Web Stack..." -ForegroundColor Cyan
+            $previousPythonUtf8 = $env:PYTHONUTF8
+            $previousConsoleOutputEncoding = [Console]::OutputEncoding
+            $previousPowerShellOutputEncoding = $OutputEncoding
+            $webInstallExit = 0
+            try {
+                $utf8 = [System.Text.UTF8Encoding]::new($false)
+                [Console]::OutputEncoding = $utf8
+                $OutputEncoding = $utf8
+                $env:PYTHONUTF8 = "1"
+                Push-Location $winUiRoot
+                try {
+                    & uv run python $webStackInstaller
+                    $webInstallExit = if ($null -ne $LASTEXITCODE) { [int64]$LASTEXITCODE } else { 0 }
+                }
+                finally {
+                    Pop-Location
+                }
+            }
+            finally {
+                [Console]::OutputEncoding = $previousConsoleOutputEncoding
+                $OutputEncoding = $previousPowerShellOutputEncoding
+                if ($null -eq $previousPythonUtf8) {
+                    Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue
+                }
+                else {
+                    $env:PYTHONUTF8 = $previousPythonUtf8
+                }
+            }
+            if ($webInstallExit -ne 0) { throw "build_install_local.py failed" }
+        }
+        else {
+        if ($storePluginBuild) {
+            Write-Host "==> Building Chrome store plugin: $storePluginOut" -ForegroundColor Cyan
+            & node $storePluginBuild --out-dir $storePluginOut
+            if ($LASTEXITCODE -ne 0) { throw "build_store_plugin.mjs failed" }
+        }
+
         if ($nativeHostBuild) {
             Write-Host "==> Running build_native_host.py..." -ForegroundColor Cyan
             & uv run python $nativeHostBuild
             if ($LASTEXITCODE -ne 0) { throw "build_native_host.py failed" }
         }
+        }
 
-        if ($FullRuntime) {
-            & $ensureZip -Full
+        if (-not $isUiAutomaRepo) {
+            if ($FullRuntime) {
+                & $ensureZip -Full
+            }
+            else {
+                & $ensureZip
+            }
+            if ($LASTEXITCODE -ne 0) { throw "$([System.IO.Path]::GetFileName($ensureZip)) failed" }
         }
         else {
-            & $ensureZip
+            Write-Host "==> Legacy runtime ZIP skipped for UIAutoma" -ForegroundColor DarkGray
         }
-        if ($LASTEXITCODE -ne 0) { throw "$([System.IO.Path]::GetFileName($ensureZip)) failed" }
 
-        $env:UIPILOT_FORCE_UV = "1"
-        $env:UIPILOT_ROOT = $winUiRoot
-        $env:NAuto_FORCE_UV = "1"
-        $env:WIN_UI_AUTO_ROOT = $winUiRoot
-        Write-Host "==> UIPILOT_FORCE_UV=1 UIPILOT_ROOT=$winUiRoot" -ForegroundColor DarkGray
+        if ($isUiAutomaRepo) {
+            $env:UIAUTOMA_FORCE_UV = "1"
+            $env:UIAUTOMA_ROOT = $winUiRoot
+            Write-Host "==> UIAUTOMA_FORCE_UV=1 UIAUTOMA_ROOT=$winUiRoot" -ForegroundColor DarkGray
+        }
+        else {
+            $env:UIPILOT_FORCE_UV = "1"
+            $env:UIPILOT_ROOT = $winUiRoot
+            $env:NAuto_FORCE_UV = "1"
+            $env:WIN_UI_AUTO_ROOT = $winUiRoot
+            Write-Host "==> UIPILOT_FORCE_UV=1 UIPILOT_ROOT=$winUiRoot" -ForegroundColor DarkGray
+        }
 
         if (Test-Path -LiteralPath $devTauri) {
             Write-Host "==> Running dev_tauri.ps1..." -ForegroundColor Cyan
