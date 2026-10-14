@@ -1,8 +1,24 @@
 import unittest
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from io import StringIO
 from unittest.mock import patch
 
 import reloadsh
+
+
+class DependencyScanTests(unittest.TestCase):
+    def test_skips_local_modules_and_test_only_imports(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "common.py").write_text("VALUE = 1\n", encoding="utf-8")
+            (root / "worker.py").write_text(
+                "import common\nimport colorama\n", encoding="utf-8"
+            )
+            (root / "test_worker.py").write_text("import pytest\n", encoding="utf-8")
+
+            self.assertEqual(reloadsh.get_third_party_packages(root), ["colorama"])
 
 
 class DetectTerminalTests(unittest.TestCase):
@@ -27,7 +43,7 @@ class OpenTabbyTerminalTests(unittest.TestCase):
 
         popen.assert_called_once_with(
             [
-                r"C:\Users\moby\AppData\Local\Programs\Tabby\Tabby.exe",
+                os.path.join(r"C:\Users\moby\AppData\Local", "Programs", "Tabby", "Tabby.exe"),
                 "open",
                 r"C:\Work Folder",
             ]

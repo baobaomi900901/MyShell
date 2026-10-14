@@ -1,9 +1,10 @@
 ﻿# .\Windows\MTGeneral\index.ps1
 function setsh {
   # 用途: 打开 vscode 并切换到 MyShell 配置文件目录
-  $shellPath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell"
+  $shellPath = $env:MYSHELL
+  if (-not $shellPath) { Write-Error "环境变量 MYSHELL 未设置"; return }
   code $shellPath
-  Write-Host "已打开 MyShell 配置文件, 请自行跳转到 \MyShell\Windows 文件夹下" -ForegroundColor Green
+  Write-Host "已打开 MyShell 项目，请按需进入 Windows 文件夹" -ForegroundColor Green
 }
 
 function type_ {

@@ -1,7 +1,11 @@
 # 打开 vscode 并切换到指定目录
 setsh() {
     # 用途: vscode 打开sh脚本项目 
-    code ~/MyShell 
+    if [[ -z "$MYSHELL" ]]; then
+        echo "错误: 环境变量 MYSHELL 未设置" >&2
+        return 1
+    fi
+    code "$MYSHELL"
     }
 
 # 允许运行任何来源的应用

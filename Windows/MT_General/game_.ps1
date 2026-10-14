@@ -16,7 +16,7 @@ function game_ {
         # 静默处理，避免干扰
     }
 
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
         Write-Host ""
@@ -141,7 +141,7 @@ function game_ {
 $script:myshell_gameCompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\game.json"
 
     if (-not (Test-Path $configFile)) {
         return
@@ -190,7 +190,7 @@ Register-ArgumentCompleter -CommandName game_ -ParameterName action -ScriptBlock
 
 # 简单的编辑命令（用 VS Code 打开配置文件）
 function edit-game-config {
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\game.json"
     if (Get-Command code -ErrorAction SilentlyContinue) {
         code $configFile
     } else {
@@ -207,7 +207,7 @@ function game_list_backups {
     # 编码设置
     try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $null = & chcp 65001 2>$null } catch {}
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
         Write-Host "配置文件不存在" -ForegroundColor Red
@@ -273,7 +273,7 @@ function game_restore {
     # 编码设置
     try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $null = & chcp 65001 2>$null } catch {}
     
-    $configFile = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\MyShell\config\private\game.json"
+    $configFile = Join-Path $env:MYSHELL "config\private\game.json"
     
     if (-not (Test-Path $configFile)) {
         Write-Host "配置文件不存在" -ForegroundColor Red

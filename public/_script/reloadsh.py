@@ -152,9 +152,17 @@ def get_third_party_packages(
         alias_map = {}
 
     stdlib_modules = _get_stdlib_modules()
+    local_modules = {
+        path.stem for path in Path(root_dir).rglob('*.py')
+    }
+    local_modules.update(
+        path.parent.name for path in Path(root_dir).rglob('__init__.py')
+    )
     packages: Set[str] = set()
 
     for py_file in Path(root_dir).rglob('*.py'):
+        if py_file.name.startswith('test_'):
+            continue
         try:
             with open(py_file, 'r', encoding='utf-8-sig') as f:
                 tree = ast.parse(f.read(), filename=py_file)
@@ -162,12 +170,12 @@ def get_third_party_packages(
                 if isinstance(node, ast.Import):
                     for alias in node.names:
                         module_name = alias.name.split('.')[0]
-                        if module_name not in stdlib_modules:
+                        if module_name not in stdlib_modules and module_name not in local_modules:
                             packages.add(module_name)
                 elif isinstance(node, ast.ImportFrom):
                     if node.module and not node.module.startswith('.'):
                         module_name = node.module.split('.')[0]
-                        if module_name not in stdlib_modules:
+                        if module_name not in stdlib_modules and module_name not in local_modules:
                             packages.add(module_name)
         except (SyntaxError, UnicodeDecodeError) as e:
             print(f"Warning: Could not parse {py_file}: {e}", file=sys.stderr)
@@ -373,6 +381,9 @@ def main() -> None:
             all_packages.update(dir_packages)
         except Exception as e:
             print(f"Error scanning Python packages in {scan_dir}: {e}", file=sys.stderr)
+    if system_type == 'mac':
+        # keyboard 仅用于 Windows 终端按键模拟。
+        all_packages.discard('keyboard')
     third_party_packages = sorted(all_packages)
 
     # 构建新 JSON 数据
@@ -460,7 +471,8 @@ def main() -> None:
             open_windows_terminal()
             print(f"新标签页已打开：{os.getcwd()}")
 
-        sys.exit(1)
+        # 专用退出码：通知 PowerShell 包装函数关闭旧终端；1 保留给真正的错误。
+        sys.exit(43)
 
     elif system_type == 'mac':
         # 退出码 42 仅在有「待卸载函数名」时交给 reloadsh.zsh 写临时文件并 unfunction，再 source ~/.zshrc
