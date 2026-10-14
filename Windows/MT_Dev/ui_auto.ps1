@@ -19,13 +19,32 @@ package-lock.json not found.
 "@
 }
 
+function Test-WinUiAutoRoot {
+    param([Parameter(Mandatory = $true)][string] $Root)
+
+    # Current UIAutoma source layout: package root + runtime.bootstrap.
+    if (
+        (Test-Path -LiteralPath (Join-Path $Root "pyproject.toml")) -and
+        (Test-Path -LiteralPath (Join-Path $Root "runtime\bootstrap.py"))
+    ) {
+        return $true
+    }
+
+    # Legacy UiPilot / pre-bootstrap Desktop Bridge launcher.
+    if (Test-Path -LiteralPath (Join-Path $Root "bridge_subprocess.py")) {
+        return $true
+    }
+
+    return $false
+}
+
 function Resolve-WinUiAutoRoot {
     param([string] $AppDir)
     $parent = Split-Path -Parent ([System.IO.Path]::GetFullPath($AppDir))
-    if (Test-Path (Join-Path $parent "bridge_subprocess.py")) {
+    if (Test-WinUiAutoRoot $parent) {
         return $parent
     }
-    throw "Cannot find win_ui_auto root above $AppDir"
+    throw "Cannot find UIAutoma/win_ui_auto root above $AppDir (expected pyproject.toml + runtime\bootstrap.py, or legacy bridge_subprocess.py)"
 }
 
 function Resolve-FirstExistingPath {
@@ -44,16 +63,105 @@ function Resolve-FirstExistingPath {
     throw "None of these paths exist under ${Root}: $($RelativePaths -join ', ')"
 }
 
+function Invoke-NativeChecked {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock] $Command,
+
+        [Parameter(Mandatory = $true)]
+        [string] $FailureMessage,
+
+        [long[]] $AllowedExitCodes = @(0)
+    )
+
+    # Cargo/npm/vite/tauri write progress to stderr even on success. With
+    # $ErrorActionPreference=Stop (and PS7 native-error preference), that stderr
+    # becomes a terminating NativeCommandError before LASTEXITCODE is checked.
+    $previousErrorAction = $ErrorActionPreference
+    $hadNativePreference = $false
+    $previousNativePreference = $null
+    if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+        $hadNativePreference = $true
+        $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+        $PSNativeCommandUseErrorActionPreference = $false
+    }
+    $ErrorActionPreference = "Continue"
+    $exitCode = [int64]0
+    try {
+        # Do not assign/capture this call: child stdout must stream to the host.
+        & $Command
+        if ($null -ne $LASTEXITCODE) {
+            $exitCode = [int64]$LASTEXITCODE
+        }
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorAction
+        if ($hadNativePreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+        }
+    }
+
+    if ($AllowedExitCodes -notcontains $exitCode) {
+        throw "$FailureMessage (exit=$exitCode)"
+    }
+}
+
 function bdauto {
     param(
         [switch] $FullRuntime,
-        [switch] $InstallWeb
+        [switch] $InstallWeb,
+        [switch] $PlanOnly
     )
 
     $ErrorActionPreference = "Stop"
+    if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+        $PSNativeCommandUseErrorActionPreference = $false
+    }
     $orig = Get-Location
     $appDir = Resolve-WinUiAutoAppDir
     $winUiRoot = Resolve-WinUiAutoRoot $appDir
+
+    if ($InstallWeb) {
+        $bdautoEntry = Join-Path $winUiRoot "scripts\bdauto.py"
+        if (-not (Test-Path -LiteralPath $bdautoEntry)) {
+            $worktreeOutput = & git -C $winUiRoot worktree list --porcelain
+            if ($LASTEXITCODE -ne 0) {
+                throw "Cannot enumerate Git worktrees for $winUiRoot"
+            }
+            foreach ($line in $worktreeOutput) {
+                if (-not $line.StartsWith("worktree ")) {
+                    continue
+                }
+                $candidateRoot = $line.Substring("worktree ".Length)
+                $candidateEntry = Join-Path $candidateRoot "scripts\bdauto.py"
+                if (Test-Path -LiteralPath $candidateEntry) {
+                    $bdautoEntry = (Resolve-Path -LiteralPath $candidateEntry).Path
+                    break
+                }
+            }
+        }
+        if (-not (Test-Path -LiteralPath $bdautoEntry)) {
+            throw "Project bdauto entry not found in this repository's worktrees: scripts\bdauto.py"
+        }
+
+        $bdautoArgs = @(
+            "run",
+            "--project", $winUiRoot,
+            "python", $bdautoEntry,
+            "--root", $winUiRoot,
+            "--install-web"
+        )
+        if ($PlanOnly) {
+            $bdautoArgs += "--print-plan"
+        }
+        Invoke-NativeChecked -FailureMessage "project bdauto command failed" -Command {
+            & uv @bdautoArgs
+        }
+        return
+    }
+    if ($PlanOnly) {
+        throw "-PlanOnly requires -InstallWeb"
+    }
     $uiautomaIdentityPath = Join-Path $winUiRoot "config\uiautoma_identity_contract.json"
     $uiautomaIdentity = $null
     if (Test-Path -LiteralPath $uiautomaIdentityPath) {
@@ -124,27 +232,25 @@ function bdauto {
         Write-Host "==> win_ui_auto: $winUiRoot" -ForegroundColor DarkGray
 
         if (Test-Path -LiteralPath $devTauri) {
-            & $devTauri -CleanupOnly
-            if ($LASTEXITCODE -ne 0) { throw "dev_tauri cleanup failed" }
+            Invoke-NativeChecked -FailureMessage "dev_tauri cleanup failed" -Command {
+                & $devTauri -CleanupOnly
+            }
         }
 
         Write-Host "==> Running npm ci..." -ForegroundColor Cyan
 
         cls
 
-        npm ci
-        if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+        Invoke-NativeChecked -FailureMessage "npm ci failed" -Command { npm ci }
 
         Write-Host "==> Running npm run build..." -ForegroundColor Cyan
-        npm run build
-        if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
+        Invoke-NativeChecked -FailureMessage "npm run build failed" -Command { npm run build }
 
         if ($InstallWeb) {
             Write-Host "==> Building and installing Chrome Web Stack..." -ForegroundColor Cyan
             $previousPythonUtf8 = $env:PYTHONUTF8
             $previousConsoleOutputEncoding = [Console]::OutputEncoding
             $previousPowerShellOutputEncoding = $OutputEncoding
-            $webInstallExit = 0
             try {
                 $utf8 = [System.Text.UTF8Encoding]::new($false)
                 [Console]::OutputEncoding = $utf8
@@ -152,8 +258,9 @@ function bdauto {
                 $env:PYTHONUTF8 = "1"
                 Push-Location $winUiRoot
                 try {
-                    & uv run python $webStackInstaller
-                    $webInstallExit = if ($null -ne $LASTEXITCODE) { [int64]$LASTEXITCODE } else { 0 }
+                    Invoke-NativeChecked -FailureMessage "build_install_local.py failed" -Command {
+                        & uv run python $webStackInstaller
+                    }
                 }
                 finally {
                     Pop-Location
@@ -169,30 +276,34 @@ function bdauto {
                     $env:PYTHONUTF8 = $previousPythonUtf8
                 }
             }
-            if ($webInstallExit -ne 0) { throw "build_install_local.py failed" }
         }
         else {
-        if ($storePluginBuild) {
-            Write-Host "==> Building Chrome store plugin: $storePluginOut" -ForegroundColor Cyan
-            & node $storePluginBuild --out-dir $storePluginOut
-            if ($LASTEXITCODE -ne 0) { throw "build_store_plugin.mjs failed" }
-        }
+            if ($storePluginBuild) {
+                Write-Host "==> Building Chrome store plugin: $storePluginOut" -ForegroundColor Cyan
+                Invoke-NativeChecked -FailureMessage "build_store_plugin.mjs failed" -Command {
+                    & node $storePluginBuild --out-dir $storePluginOut
+                }
+            }
 
-        if ($nativeHostBuild) {
-            Write-Host "==> Running build_native_host.py..." -ForegroundColor Cyan
-            & uv run python $nativeHostBuild
-            if ($LASTEXITCODE -ne 0) { throw "build_native_host.py failed" }
-        }
+            if ($nativeHostBuild) {
+                Write-Host "==> Running build_native_host.py..." -ForegroundColor Cyan
+                Invoke-NativeChecked -FailureMessage "build_native_host.py failed" -Command {
+                    & uv run python $nativeHostBuild
+                }
+            }
         }
 
         if (-not $isUiAutomaRepo) {
             if ($FullRuntime) {
-                & $ensureZip -Full
+                Invoke-NativeChecked -FailureMessage "$([System.IO.Path]::GetFileName($ensureZip)) failed" -Command {
+                    & $ensureZip -Full
+                }
             }
             else {
-                & $ensureZip
+                Invoke-NativeChecked -FailureMessage "$([System.IO.Path]::GetFileName($ensureZip)) failed" -Command {
+                    & $ensureZip
+                }
             }
-            if ($LASTEXITCODE -ne 0) { throw "$([System.IO.Path]::GetFileName($ensureZip)) failed" }
         }
         else {
             Write-Host "==> Legacy runtime ZIP skipped for UIAutoma" -ForegroundColor DarkGray
@@ -213,16 +324,17 @@ function bdauto {
 
         if (Test-Path -LiteralPath $devTauri) {
             Write-Host "==> Running dev_tauri.ps1..." -ForegroundColor Cyan
-            & $devTauri
-            $devExit = if ($null -ne $LASTEXITCODE) { [int64]$LASTEXITCODE } else { 0 }
-            if ($devExit -ne 0 -and $devExit -ne -1073741510 -and $devExit -ne 3221225786) {
-                throw "dev_tauri.ps1 failed"
-            }
+            # CTRL+C / console close on Windows often surfaces as these statuses.
+            Invoke-NativeChecked `
+                -FailureMessage "dev_tauri.ps1 failed" `
+                -AllowedExitCodes @(0, -1073741510, 3221225786) `
+                -Command { & $devTauri }
         }
         else {
             Write-Host "==> Running npm run tauri dev..." -ForegroundColor Cyan
-            npm run tauri dev
-            if ($LASTEXITCODE -ne 0) { throw "npm run tauri dev failed" }
+            Invoke-NativeChecked -FailureMessage "npm run tauri dev failed" -Command {
+                npm run tauri dev
+            }
         }
     }
     finally {

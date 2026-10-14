@@ -14,7 +14,8 @@ license_lite.py - 启动Lite授权工具并自动完成机器标识、授权期�
 
 交互：
     未传 MACHINE_ID 且未传 --xlsx：先选 1 单个 / 2 多个（questionary 菜单）→ 多个时 Windows 优先弹出系统文件框选 xlsx；
-    机器标识、起始行、路径回退均用标准 input（避免 questionary 文本框无法粘贴）。
+    机器标识、起始行、路径回退均用标准 input（避免 questionary 文本框无法粘贴）；
+    单个授权时会先读取剪贴板，若为 U 开头 32/33 位机器标识则作为默认值，直接回车确认。
     授权期限：直接回车则使用「今天 + 90 天」的 YYYY-MM-DD。
     如果目标窗口已存在，则直接使用现有窗口，不再重复启动程序。
 """
@@ -393,8 +394,24 @@ def choose_authorization_mode_interactive():
         print("无效输入，请重新输入 1 或 2。")
 
 
+def read_machine_id_from_clipboard():
+    """读取剪贴板；仅当内容是 U 开头 32/33 位机器标识时返回。"""
+    try:
+        text = (pyperclip.paste() or "").strip()
+    except Exception:
+        return None
+    if re.fullmatch(r"^U[A-Z0-9]{31,32}$", text):
+        return text
+    return None
+
+
 def prompt_machine_id_single_interactive():
-    """单个授权：读取一行机器标识（使用标准 input，避免 questionary 文本框无法粘贴）。"""
+    """单个授权：优先用剪贴板中的合法机器标识作为默认值，否则手动输入。"""
+    clipboard_mid = read_machine_id_from_clipboard()
+    if clipboard_mid:
+        print(f"✅ 已从剪贴板识别机器标识，直接回车确认：{clipboard_mid}")
+        raw = input("> ").strip()
+        return raw if raw else clipboard_mid
     print("请输入机器标识（可从客户处获得，支持粘贴后回车）：")
     return input("> ").strip()
 
