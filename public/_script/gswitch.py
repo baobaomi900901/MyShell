@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # public/_script/gswitch.py
-# 交互选择分支并写入临时文件，供 PowerShell 执行 git switch（风格同 cd_.ps1 + common.interactive_select）
+# 交互选择并切换分支；macOS 与 Windows 共用。
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 
-from common import RED, RESET, YELLOW, interactive_select, write_temp_file
+from common import RED, RESET, YELLOW, interactive_select
 
 
 def _run_git(args: list[str], cwd: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -78,12 +78,25 @@ def build_branch_items(
     )
     return items
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        print(f"{RED}❌ 参数不足：需要临时文件路径{RESET}")
-        sys.exit(1)
+def switch_selected(source: str, ref: str) -> int:
+    if source == "local":
+        return subprocess.run(["git", "switch", ref], check=False).returncode
+    if source == "remote" and "/" in ref:
+        local_branch = ref.split("/", 1)[1]
+        existing = _run_git(["show-ref", "--verify", "--quiet", f"refs/heads/{local_branch}"])
+        args = ["switch", local_branch] if existing.returncode == 0 else ["switch", "--track", ref]
+        return subprocess.run(["git", *args], check=False).returncode
+    print(f"{RED}❌ 无效的分支选择结果: {source} {ref}{RESET}", file=sys.stderr)
+    return 2
 
-    out_file = sys.argv[1]
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if len(argv) > 1:
+        print(f"{RED}用法: gswitch [分支]{RESET}", file=sys.stderr)
+        return 2
+    if argv:
+        return subprocess.run(["git", "switch", argv[0]], check=False).returncode
     _ensure_git_repo()
 
     current = _current_branch()
@@ -91,7 +104,7 @@ def main() -> None:
 
     if not items:
         print(f"{YELLOW}没有可选分支。{RESET}")
-        sys.exit(0)
+        return 0
 
 
     _, value = interactive_select(
@@ -101,10 +114,10 @@ def main() -> None:
     )
     if value is None:
         print(f"{YELLOW}已取消操作。{RESET}")
-        sys.exit(0)
-
-    write_temp_file(out_file, value)
+        return 0
+    source, ref = value.split("\t", 1)
+    return switch_selected(source, ref)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -6,7 +6,7 @@ clean_unused_images — 过滤 .md / .html / .htm 中未被引用的图片资源
 
 用法:
     python clean_unused_images.py [扫描目录]
-    未传目录时默认为「当前工作目录」（即你在终端里 cd 到的目录，与 _tool 从何处调用无关）。
+    未传目录时默认为「当前工作目录」（即你在终端里 cd 到的目录，与 tool_ 从何处调用无关）。
 """
 
 from __future__ import annotations

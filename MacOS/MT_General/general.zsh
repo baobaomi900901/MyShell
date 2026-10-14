@@ -9,7 +9,7 @@ setsh() {
     }
 
 # 允许运行任何来源的应用
-_master() { 
+master_() {
     # 用途: 允许运行任何来源的应用
     sudo spctl --master-disable 
     }
@@ -41,7 +41,7 @@ remove_sh() {
 }
 
 # 检测方法是否存在
-_type() {
+type_() {
     # 用途: 检测方法是否存在
     if [ $# -eq 0 ]; then
         echo "用法: type_ <name1>"
@@ -51,8 +51,14 @@ _type() {
     type "$@"
 }
 
+op_() {
+    # 用途: 用 Finder 或默认程序打开路径；无参数时打开当前目录
+    [[ -n "${MYSHELL:-}" ]] || { print -u2 '错误: 环境变量 MYSHELL 未设置'; return 1; }
+    python3 "$MYSHELL/public/_script/shell_commands.py" open "$@"
+}
+
 # 现在的时间
-_now() {
+now_() {
     # 用途: 显示当前时间
     # 获取当前日期时间，格式：20251117-10:10
     local current_time=$(date "+%Y%m%d-%H:%M")
@@ -66,7 +72,7 @@ _now() {
 }
 
 # 本机ip地址
-_myip() {
+myip_() {
     # 用途: 显示本机IP地址
     # 尝试多个常见的网络接口
     local interfaces=("en0" "en1" "en2" "eth0")
@@ -96,7 +102,7 @@ _myip() {
 }
 
 # 创建文件或文件夹的便捷函数
-_new() {
+new_() {
     # 用途: 创建文件或文件夹
     local force_overwrite=false
     local name
@@ -158,10 +164,10 @@ _new() {
 }
 
 # 删除文件或文件夹（支持多路径、相对/绝对路径；目录递归删除）
-_del() {
+del_() {
     # 用途: 删除文件或目录（支持多路径；目录递归删除）
     if [ $# -eq 0 ]; then
-        echo -e "${c_y}用法: _del <路径> [路径2 ...]${c_x}"
+        echo -e "${c_y}用法: del_ <路径> [路径2 ...]${c_x}"
         echo -e "${c_y}  目录会递归删除（等同 rm -rf）${c_x}"
         return 1
     fi
@@ -228,3 +234,11 @@ resolve_path() {
     echo "${path:a}"
     return 0
 }
+
+# 保留旧命令名，供已有的个人脚本继续使用。
+alias _type=type_
+alias _now=now_
+alias _new=new_
+alias _del=del_
+alias _master=master_
+alias _myip=myip_

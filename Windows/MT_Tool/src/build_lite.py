@@ -3,7 +3,7 @@
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+r"""
 KRPA Lite 自动化构建脚本（正式版远程版本号自动递增，格式优化）
 执行步骤：
 1. cd 到 D:\Code\aom
@@ -81,7 +81,7 @@ def run_now_command():
 
 
 def clean_web_directory():
-    """清空 KingAutomate\web 文件夹"""
+    r"""清空 KingAutomate\web 文件夹"""
     print(f"\n正在清空 web 目录: {WEB_DIR}")
     if not os.path.exists(WEB_DIR):
         os.makedirs(WEB_DIR, exist_ok=True)
@@ -249,7 +249,7 @@ def is_valid_version(text):
 
 
 def update_dproj_version(new_version):
-    """
+    r"""
     更新 KingAutomate\krpalite.dproj 文件中的 ProductVersion。
     使用正则表达式在 VerInfo_Keys 中查找 ProductVersion=旧值 并替换为新值。
     保持原文件格式不变，不引入命名空间前缀。

@@ -362,7 +362,7 @@ def _questionary_available():
 def choose_authorization_mode_interactive():
     """
     返回 'single' | 'multi' | None（取消）。
-    优先使用 questionary（与 _tool 菜单一致）；否则回退到 input。
+    优先使用 questionary（与 tool_ 菜单一致）；否则回退到 input。
     """
     if _questionary_available():
         import questionary
@@ -622,7 +622,7 @@ def prompt_xlsx_path_interactive():
     """
     print()
     print("提示：若不想交互选文件，可直接运行：")
-    print('  _tool license-lite --xlsx "D:\\\\path\\\\file.xlsx"')
+    print('  tool_ license-lite --xlsx "D:\\\\path\\\\file.xlsx"')
     print()
 
     if sys.platform == "win32":

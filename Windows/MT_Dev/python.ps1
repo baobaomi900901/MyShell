@@ -1,22 +1,22 @@
 ﻿# 激活当前目录下的 .venv 虚拟环境
 function py_star {
     # 用途: 激活当前目录下的 .venv 虚拟环境
-    if (Test-Path ".\.venv\Scripts\Activate.ps1") {
-        .\.venv\Scripts\Activate.ps1
-        Write-Host "✅ 虚拟环境已激活" -ForegroundColor Green
-    } else {
-        Write-Host "❌ 未找到 .\.venv\Scripts\Activate.ps1，请确认当前目录是项目根目录且已运行 uv sync" -ForegroundColor Red
-    }
+    if (-not $env:MYSHELL) { Write-Error '环境变量 MYSHELL 未设置'; return }
+    $helper = Join-Path $env:MYSHELL 'public\_script\shell_commands.py'
+    $activate = python $helper venv-activate win
+    if ($LASTEXITCODE -ne 0) { return }
+    . $activate
+    if ($?) { Write-Host '✅ 虚拟环境已激活' -ForegroundColor Green }
 }
 
 function py_end {
     # 用途: 退出当前虚拟环境
-    if ($env:VIRTUAL_ENV) {
-        deactivate
-        Write-Host "✅ 已退出虚拟环境" -ForegroundColor Green
-    } else {
-        Write-Host "⚠️ 当前未激活任何虚拟环境" -ForegroundColor Yellow
-    }
+    if (-not $env:MYSHELL) { Write-Error '环境变量 MYSHELL 未设置'; return }
+    $helper = Join-Path $env:MYSHELL 'public\_script\shell_commands.py'
+    python $helper venv-deactivate
+    if ($LASTEXITCODE -ne 0) { return }
+    deactivate
+    if ($?) { Write-Host '✅ 已退出虚拟环境' -ForegroundColor Green }
 }
 
 function pym {

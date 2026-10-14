@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Mac 侧 MT 工具入口：_tool（与 Windows 一致）
+# Mac 侧 MT 工具入口：tool_（与 Windows 一致）
 
 # 本文件所在目录（解析 config 内相对路径、tool_menu 相对路径用）
 tool_SELFPATH="${0:A:h}"
@@ -29,8 +29,8 @@ print((data.get(cmd) or {}).get("description", "") or "")
 ' "$cfg" "$c"
 }
 
-# 与 Windows _tool 对齐：无参走 questionary 菜单，有参按 config 执行脚本
-_tool() {
+# 与 Windows tool_ 对齐：无参走 questionary 菜单，有参按 config 执行脚本
+tool_() {
     # 用途: 工具集
     local config_file="$tool_SELFPATH/config.json"
     if [[ ! -f "$config_file" ]]; then
@@ -61,7 +61,7 @@ _tool() {
             [[ -f "$temp" ]] && rm -f "$temp"
 
             if [[ -n "$picked" ]]; then
-                _tool "$picked"
+                tool_ "$picked"
                 return $?
             fi
             if [[ $exit_menu -ne 0 ]]; then
@@ -221,4 +221,7 @@ with open(sys.argv[1], encoding="utf-8-sig") as f:
     _describe 'command' commands
 }
 
-compdef _tool_tab_for _tool
+compdef _tool_tab_for tool_
+
+# 旧入口保留兼容；函数索引只显示统一后的 tool_。
+alias _tool=tool_

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""无参数时由 _tool 调用：从 MTTool config.json 列出命令，交互选择后写入临时文件（一行命令名）。"""
+"""无参数时由工具或模板入口调用：从 config.json 列出命令，交互选择后写入临时文件（一行命令名）。"""
 
 import json
 import os

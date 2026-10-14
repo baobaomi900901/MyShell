@@ -43,19 +43,10 @@ function op_ {
         [string[]]$Paths
     )
 
-    # 默认打开当前目录
-    if (-not $Paths -or $Paths.Count -eq 0) {
-        $Paths = @('.')
-    }
-
-    foreach ($path in $Paths) {
-        if (-not (Test-Path -LiteralPath $path)) {
-            Write-Warning "路径不存在，已跳过: $path"
-            continue
-        }
-        Invoke-Item -LiteralPath $path
-        Write-Verbose "已打开: $path"
-    }
+    if (-not $env:MYSHELL) { Write-Error '环境变量 MYSHELL 未设置'; return }
+    $helper = Join-Path $env:MYSHELL 'public\_script\shell_commands.py'
+    if ($Paths.Count -gt 0) { python $helper open @Paths }
+    else { python $helper open }
 }
 
 function now_ {

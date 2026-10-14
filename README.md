@@ -53,6 +53,8 @@ hsh
 python .\init.py
 ```
 
+请使用可正常运行 `pip` 的 Python 执行初始化。`uv run init.py` 可能选用 uv 托管的 Python，依赖安装会报 `externally-managed-environment`；遇到该错误时可改用上述 `python .\init.py`。
+
 初始化完成后，重新打开 PowerShell 终端，再执行：
 
 ```powershell
@@ -191,23 +193,33 @@ code_ my-project
 | `hsh` | 查看带用途描述的函数索引 | macOS / Windows |
 | `reloadsh` | 更新函数索引；macOS 重新加载 `.zshrc`，Windows 提供终端重启交互 | macOS / Windows |
 | `reloadsh --no-restart` | 更新索引并跳过终端重启交互 | Windows |
+| `type_` | 查询命令或函数是否存在 | macOS / Windows |
+| `now_` | 显示当前时间并复制到剪贴板 | macOS / Windows |
+| `new_` / `del_` | 创建 / 删除文件或目录；macOS 强制创建用 `-f`，Windows 用 `-Force` | macOS / Windows |
+| `myip_` | 查看并复制本机 IP 地址 | macOS |
+| `master_` | 调用 macOS 系统命令调整应用来源限制 | macOS |
 | `cd_ [配置键名]` | 跳转到配置目录 | macOS / Windows |
 | `code_ [配置键名]` | 用 VS Code 打开配置目标 | macOS / Windows |
 | `pw_ [配置键名]` | 复制配置密码 | macOS / Windows |
 | `ga [文件...]` | `git add`；无参数时执行 `git add .` | macOS / Windows |
 | `gs` / `gcmt "消息"` | 查看 Git 状态 / 提交改动 | macOS / Windows |
-| `gpr` / `gpo` | `git pull --rebase` / `git push origin` | macOS / Windows |
+| `gpr` / `gpo` | `git pull --rebase` / 推送；macOS 用 `git push origin`，Windows 用 `git push` | macOS / Windows |
 | `gsuk` / `gspop` | `git stash -u -k` / `git stash pop` | macOS / Windows |
+| `grecmt` / `glocal` | 软重置最新提交 / 查看相对 `origin/develop` 的本地提交 | macOS / Windows |
 | `greset` | 交互式 Git 重置操作 | macOS / Windows |
-| `gswitch [分支]` | 无参数时选择本地或远端分支，有参数时执行 `git switch` | Windows |
+| `gswitch [分支]` | 无参数时选择本地或远端分支，有参数时执行 `git switch` | macOS / Windows |
+| `py_star` / `py_end` | 激活当前目录的 `.venv` / 退出当前虚拟环境 | macOS / Windows |
+| `op_ [路径...]` | 在 Finder、资源管理器或默认程序中打开路径；无参数时打开当前目录 | macOS / Windows |
 | `pd` / `pdoc` / `pa` / `pi` | pnpm 开发、文档开发、添加依赖、安装依赖 | macOS / Windows |
-| `_tool`（macOS） / `tool_`（Windows） | 工具集入口，无参数时交互选择子命令 | macOS / Windows |
+| `tool_` | 工具集入口，无参数时交互选择子命令 | macOS / Windows |
 | `tmpl_` | 模板命令集入口 | macOS / Windows |
 | `game_` | 游戏存档备份工具 | macOS / Windows |
 
 完整命令列表以本机执行 `reloadsh` 后的 `hsh` 输出为准。`greset all` 会执行 `git reset --hard HEAD`，丢弃已跟踪文件的未提交改动；执行前应确认要保留的内容。
 
-Windows 的交互式 `gswitch` 会区分本地和远端分支。选择远端分支时，若已有同名本地分支则切换到它，否则创建跟踪分支。菜单使用本地已有的远端引用，需要最新列表时先执行 `git fetch`。
+macOS 原有的 `_type`、`_now`、`_new`、`_del`、`_master`、`_myip`、`_tool` 保留为兼容别名；新文档和函数索引使用统一后的名称。
+
+Git 简写命令由共用 Python 脚本执行，Zsh 与 PowerShell 只保留同名终端入口、补全及虚拟环境激活所需的 shell 操作。交互式 `gswitch` 会区分本地和远端分支。选择远端分支时，若已有同名本地分支则切换到它，否则创建跟踪分支。菜单使用本地已有的远端引用，需要最新列表时先执行 `git fetch`。
 
 ## 扩展脚本与工具
 

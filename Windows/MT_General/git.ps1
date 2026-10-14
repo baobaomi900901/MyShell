@@ -1,5 +1,18 @@
 ﻿# .\Windows\MTGit\index.ps1
-# Git 简写命令
+# Git 简写命令：终端入口保留，实际执行交给共用 Python 脚本。
+function _myshell_git {
+    param(
+        [string]$CommandName,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Arguments
+    )
+    if (-not $env:MYSHELL) {
+        Write-Error '环境变量 MYSHELL 未设置'
+        return
+    }
+    $scriptPath = Join-Path $env:MYSHELL 'public\_script\git_commands.py'
+    python $scriptPath win $CommandName @Arguments
+}
 
 function ga {
     # 用途: 执行 "git add ."
@@ -8,14 +21,8 @@ function ga {
         [string[]]$Paths
     )
 
-    if ($Paths.Count -eq 0) {
-        git add .
-        Write-Host "Added all changes to staging area."
-    }
-    else {
-        git add $Paths
-        Write-Host "Added specified files to staging area."
-    }
+    if ($Paths.Count -gt 0) { _myshell_git ga @Paths }
+    else { _myshell_git ga }
 }
 Register-ArgumentCompleter -CommandName ga -ScriptBlock {
     param($commandName, $wordToComplete, $cursorPosition)
@@ -26,172 +33,64 @@ Register-ArgumentCompleter -CommandName ga -ScriptBlock {
 
 function gs { 
     # 用途: 执行 "git status"
-    git status 
+    _myshell_git gs
 }
 
 function gcmt {
     # 用途: 执行 "git commit -m"
-    git commit -m $args 
+    _myshell_git gcmt @args
 }
 function gpr { 
     # 用途: 执行 "git pull --rebase"
-    git pull --rebase 
+    _myshell_git gpr
 }
 function gpo { 
     # 用途: 执行 "git push"
-    git push 
+    _myshell_git gpo
 }
 
 function greset {
     # 用途: 调用 Python 交互式 greset
-    param(
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]]$Args
-    )
-
-    $myshell = $env:MYSHELL
-    if ($myshell) {
-        $pyScript = Join-Path $myshell "public\_script\greset.py"
-    }
-
-    function _greset_usage {
-        Write-Host "使用方法:" -ForegroundColor Blue
-        Write-Host "  greset               # 交互式选择" -ForegroundColor Yellow
-        Write-Host "  greset all           # Hard reset to HEAD (丢弃所有未提交的更改)" -ForegroundColor Yellow
-        Write-Host "  greset back          # Soft reset HEAD~1 (撤销最新提交，保留更改到暂存区)" -ForegroundColor Yellow
-        Write-Host "  greset back -1       # Soft reset HEAD~1 (同上)" -ForegroundColor Yellow
-        Write-Host "  greset back -2       # Soft reset HEAD~2 (撤销最近 2 次提交，保留更改到暂存区)" -ForegroundColor Yellow
-        Write-Host "  greset back gcmt     # Unstage (取消暂存，保留工作区改动)" -ForegroundColor Yellow
-    }
-
-    # 优先走 Python：避免这里维护两套逻辑
-    if ($pyScript -and (Test-Path $pyScript)) {
-        if ($Args.Count -eq 0) {
-            python $pyScript
-        } else {
-            python $pyScript @Args
-        }
+    if (-not $env:MYSHELL) {
+        Write-Error '环境变量 MYSHELL 未设置'
         return
     }
-
-    $action = $Args[0]
-    $mode = if ($Args.Count -ge 2) { $Args[1] } else { $null }
-
-    switch ($action) {
-        "all" {
-            git reset --hard HEAD
-            Write-Host "Executed: git reset --hard HEAD (强制重置工作区和暂存区)"
-        }
-        "back" {
-            if ($mode -eq "gcmt") {
-                git reset
-                Write-Host "Executed: git reset (取消暂存，保留工作区改动)"
-                return
-            }
-            if (-not $mode) {
-                git reset --soft HEAD~1
-                Write-Host "Executed: git reset --soft HEAD~1 (撤销最新提交，保留更改到暂存区)"
-                return
-            }
-            if ($mode -match '^-([0-9]+)$') {
-                $n = [int]$Matches[1]
-                git reset --soft ("HEAD~{0}" -f $n)
-                Write-Host ("Executed: git reset --soft HEAD~{0} (撤销最近 {0} 次提交，保留更改到暂存区)" -f $n)
-                return
-            }
-            Write-Host "错误: back 参数不支持。可用: -1/-2/... 或 gcmt" -ForegroundColor Red
-        }
-        default {
-            _greset_usage
-        }
-    }
+    $scriptPath = Join-Path $env:MYSHELL 'public\_script\greset.py'
+    python $scriptPath @args
 }
 
 function gsuk {
     # 用途: 执行 "git stash -u -k", 忽略暂存区的更改
-    git stash -u -k 
+    _myshell_git gsuk
 }
 function gspop { 
     # 用途: 执行 "git stash pop", 恢复最近的暂存区更改
-    git stash pop 
+    _myshell_git gspop
 }
 function grecmt { 
-    # 用途: 执行 "git rebase -i HEAD~1", 编辑最近 n 次提交
-    git reset --soft HEAD~1 
+    # 用途: 软重置最新提交，保留改动到暂存区
+    _myshell_git grecmt
 }
 function glocal { 
-    # 用途: 执行 "git branch -D local", 删除本地分支
-    git log origin/develop..HEAD --oneline
+    # 用途: 查看相对 origin/develop 的本地提交
+    _myshell_git glocal
 }
 
 function gswitch {
-    # 用途: 无参时像 cd_ 一样用 questionary 上下键选分支后 git switch；有参时直接 git switch <Branch>
+    # 用途: 无参时交互选择分支，有参时直接 git switch <Branch>
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Branch
     )
-
+    if (-not $env:MYSHELL) {
+        Write-Error '环境变量 MYSHELL 未设置'
+        return
+    }
+    $scriptPath = Join-Path $env:MYSHELL 'public\_script\gswitch.py'
     if ($Branch) {
-        git switch $Branch
-        return
-    }
-
-    $myshell = $env:MYSHELL
-    if (-not $myshell) {
-        Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
-        return
-    }
-
-    $pyScript = Join-Path $myshell "public\_script\gswitch.py"
-    if (-not (Test-Path $pyScript)) {
-        Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
-        return
-    }
-
-    $tempFile = [System.IO.Path]::GetTempFileName()
-    try {
-        python $pyScript $tempFile
-        if ($LASTEXITCODE -ne 0) {
-            return
-        }
-        $selection = Get-Content -Path $tempFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-        if ([string]::IsNullOrWhiteSpace($selection)) {
-            return
-        }
-
-        $parts = $selection.Trim() -split "`t", 2
-        if ($parts.Count -ne 2 -or [string]::IsNullOrWhiteSpace($parts[1])) {
-            Write-Host "❌ 无效的分支选择结果" -ForegroundColor Red
-            return
-        }
-
-        $source = $parts[0]
-        $ref = $parts[1]
-        if ($source -eq 'local') {
-            git switch $ref
-            return
-        }
-        if ($source -eq 'remote') {
-            $localBranch = ($ref -split '/', 2)[1]
-            if ([string]::IsNullOrWhiteSpace($localBranch)) {
-                Write-Host "❌ 无效的远端分支: $ref" -ForegroundColor Red
-                return
-            }
-
-            git show-ref --verify --quiet "refs/heads/$localBranch"
-            if ($LASTEXITCODE -eq 0) {
-                git switch $localBranch
-            } else {
-                git switch --track $ref
-            }
-            return
-        }
-
-        Write-Host "❌ 未知的分支来源: $source" -ForegroundColor Red
-    } finally {
-        if (Test-Path $tempFile) {
-            Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
-        }
+        python $scriptPath $Branch
+    } else {
+        python $scriptPath
     }
 }
 
