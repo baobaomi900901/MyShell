@@ -1,0 +1,181 @@
+{
+  "type": "win",
+  "path": [
+    {
+      "backend": "wnd",
+      "tag": "Window",
+      "required": [
+        { "name": "process_name", "value": "Weixin.exe" },
+        { "name": "class_name", "value": "Qt51514QWindowIcon" },
+        { "name": "title", "value": "微信" }
+      ],
+      "optional": []
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "QWidget" },
+        { "name": "index", "value": 1 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "QStackedWidget" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "MainView" },
+        { "name": "class_name", "value": "mmui::MainView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "MainView.main_window_corner_view" },
+        { "name": "class_name", "value": "QWidget" },
+        { "name": "index", "value": 1 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "MainView.main_window_corner_view.MainView" },
+        { "name": "class_name", "value": "mmui::MainView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "MainView.main_window_corner_view.MainView.main_window_main_splitter_view" },
+        { "name": "class_name", "value": "mmui::XSplitterView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "MainView.main_window_corner_view.MainView.main_window_main_splitter_view.main_window_sub_splitter_view" },
+        { "name": "class_name", "value": "mmui::XSplitterView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::XStackedWidget" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::ChatDetailView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::XSplitterView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::XStackedWidget" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "automation_id", "value": "chat_message_page" },
+        { "name": "class_name", "value": "mmui::ChatMessagePage" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Custom",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::XSplitterView" },
+        { "name": "index", "value": 1 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "selected": false,
+      "required": [],
+      "optional": [
+        { "name": "class_name", "value": "mmui::XView" },
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "required": [
+        { "name": "class_name", "value": "mmui::ChatInputView" }
+      ],
+      "optional": [
+        { "name": "index", "value": 0 }
+      ]
+    },
+    {
+      "backend": "uia",
+      "tag": "Group",
+      "required": [
+        { "name": "class_name", "value": "mmui::XVBoxView" }
+      ],
+      "optional": [
+        { "name": "index", "value": 0 }
+      ]
+    }
+  ]
+}

@@ -215,6 +215,8 @@ code_ my-project
 | `tmpl_` | 模板命令集入口 | macOS / Windows |
 | `game_` | 游戏存档备份工具 | macOS / Windows |
 
+Windows 的 `reloadsh` 更新函数索引后可请求打开新终端。脚本会观察启动进程最多 3 秒，检查退出码和异常输出；启动失败会显示诊断并保留当前终端。打开请求发出后，还需确认新终端已正常打开才会关闭旧终端，默认保留；取消或按 Ctrl+C 也会保留。Tabby 的 `uncaughtException` 等异常即使伴随退出码 0，也按启动失败处理，普通弃用警告不会阻止后续确认。可用 `reloadsh --no-restart` 跳过这些交互，再手动打开新标签页或执行 `. $PROFILE` 重新加载配置。
+
 完整命令列表以本机执行 `reloadsh` 后的 `hsh` 输出为准。`greset all` 会执行 `git reset --hard HEAD`，丢弃已跟踪文件的未提交改动；执行前应确认要保留的内容。
 
 macOS 原有的 `_type`、`_now`、`_new`、`_del`、`_master`、`_myip`、`_tool` 保留为兼容别名；新文档和函数索引使用统一后的名称。

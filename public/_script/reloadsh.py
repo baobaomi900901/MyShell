@@ -9,6 +9,9 @@ import argparse
 import ast
 import sys
 import subprocess
+import shutil
+import tempfile
+import mmap
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional, Any
 
@@ -29,6 +32,13 @@ JSON_FIELD_PIP_ALIASES = "pip_aliases"
 
 DESC_MARKER = "# 用途:"
 MAX_DESC_LINES = 5
+TERMINAL_STARTUP_TIMEOUT = 3.0
+TERMINAL_OUTPUT_LIMIT = 8192
+TERMINAL_FATAL_OUTPUT = re.compile(
+    rb'uncaught(?:Exception|Error)|unhandled(?:Promise)?Rejection|\bFATAL\b|'
+    rb'^\s*(?:[A-Za-z]*Error|Exception):',
+    re.IGNORECASE | re.MULTILINE,
+)
 
 # ----------------------------------------------------------------------
 # 全局缓存：标准库模块集合（只计算一次）
@@ -234,7 +244,7 @@ def load_pip_config() -> Tuple[List[str], Dict[str, List[str]]]:
 # ----------------------------------------------------------------------
 def detect_terminal() -> str:
     """检测终端类型（基于环境变量 TERM_PROGRAM）"""
-    terminal = os.environ.get('TERM_PROGRAM', '').lower()
+    terminal = os.environ.get('TERM_PROGRAM', '').strip().lower()
     return terminal if terminal in {'vscode', 'tabby'} else 'windows'
 
 def send_combo(keys: List[str]) -> None:
@@ -254,21 +264,112 @@ def send_vscode_combo() -> None:
     """Ctrl+Shift+` （VS Code 新建终端）"""
     send_combo(['ctrl', 'shift', '`'])
 
-def open_terminal(name: str, command: List[str]) -> None:
+def open_terminal(
+    name: str,
+    command: List[str],
+    startup_timeout: float = TERMINAL_STARTUP_TIMEOUT,
+) -> None:
+    """观察启动错误；进程仍在运行或正常退出都不能证明新标签页已就绪。"""
     try:
-        subprocess.Popen(command)
+        # 文件避免大量输出塞满 PIPE，也允许终端进程在观察期后继续运行。
+        with tempfile.TemporaryFile() as output:
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+            )
+            try:
+                exit_code = process.wait(timeout=startup_timeout)
+            except subprocess.TimeoutExpired:
+                exit_code = None
+
+            output_size = os.fstat(output.fileno()).st_size
+            diagnostics = ''
+            fatal_marker = ''
+            if output_size:
+                # 只映射观察结束时的日志；读取不改变后台进程共享的文件位置。
+                with mmap.mmap(output.fileno(), output_size, access=mmap.ACCESS_READ) as log:
+                    match = TERMINAL_FATAL_OUTPUT.search(log)
+                    if match:
+                        fatal_marker = match.group(0).decode('utf-8', errors='replace').strip()
+                    diagnostics = log[max(0, output_size - TERMINAL_OUTPUT_LIMIT):output_size].decode(
+                        'utf-8', errors='replace'
+                    ).strip()
     except OSError as e:
-        print(f"无法打开新的 {name} 标签页: {e}", file=sys.stderr)
+        print(f"无法启动 {name}: {e}。当前终端已保留。", file=sys.stderr)
         sys.exit(10)
 
+    if exit_code not in (None, 0) or fatal_marker:
+        status = '进程仍在运行' if exit_code is None else f'退出码: {exit_code}'
+        print(f"{name} 启动失败（{status}）。当前终端已保留。", file=sys.stderr)
+        if fatal_marker:
+            print(f"检测到异常输出: {fatal_marker}", file=sys.stderr)
+        if diagnostics:
+            print(diagnostics, file=sys.stderr)
+        sys.exit(10)
+
+    if diagnostics:
+        print(f"{name} 启动输出:\n{diagnostics}", file=sys.stderr)
+
+
 def open_tabby_terminal() -> None:
-    """在当前 Tabby 窗口中用当前工作目录打开新标签页。"""
-    executable = Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs' / 'Tabby' / 'Tabby.exe'
-    open_terminal('Tabby', [str(executable), 'open', os.getcwd()])
+    """查找 Tabby，并请求在当前工作目录打开新标签页。"""
+    executable = shutil.which('Tabby.exe') or shutil.which('tabby')
+    if not executable:
+        locations = [
+            ('LOCALAPPDATA', ('Programs', 'Tabby', 'Tabby.exe')),
+            ('ProgramFiles', ('Tabby', 'Tabby.exe')),
+            ('ProgramFiles(x86)', ('Tabby', 'Tabby.exe')),
+        ]
+        for variable, parts in locations:
+            directory = os.environ.get(variable)
+            if directory:
+                candidate = Path(directory).joinpath(*parts)
+                if candidate.is_file():
+                    executable = str(candidate)
+                    break
+
+    if not executable:
+        print("未找到 Tabby，请确认安装位置或将 Tabby 加入 PATH。当前终端已保留。", file=sys.stderr)
+        sys.exit(10)
+
+    open_terminal('Tabby', [executable, 'open', os.getcwd()])
 
 def open_windows_terminal() -> None:
     """在当前 Windows Terminal 中用当前工作目录打开新标签页。"""
     open_terminal('Windows Terminal', ["wt.exe", "-w", "0", "new-tab", "-d", os.getcwd()])
+
+
+def restart_windows_terminal() -> bool:
+    """请求新终端后，由用户确认是否可以关闭当前会话；默认保留。"""
+    terminal_type = detect_terminal()
+    print(f"检测到当前终端窗口类型：{terminal_type}")
+    try:
+        if terminal_type == 'vscode':
+            print("即将发送 Ctrl+Shift+` 到 VS Code，请确保焦点在 VS Code 窗口...")
+            time.sleep(2)
+            send_vscode_combo()
+        elif terminal_type == 'tabby':
+            print("正在请求 Tabby 打开新标签页...")
+            open_tabby_terminal()
+        else:
+            print("正在请求 Windows Terminal 打开新标签页...")
+            open_windows_terminal()
+
+        print(f"新终端打开请求已发送，工作目录：{os.getcwd()}")
+        confirmed = questionary.confirm(
+            "请确认新终端已正常打开，是否关闭当前终端？",
+            default=False,
+        ).ask()
+    except KeyboardInterrupt:
+        print("\n用户取消操作，当前终端已保留。")
+        return False
+
+    if confirmed is not True:
+        print("当前终端已保留；可手动打开新标签页，或执行 . $PROFILE 重新加载配置。")
+        return False
+    return True
 
 # ----------------------------------------------------------------------
 # 主程序
@@ -428,8 +529,7 @@ def main() -> None:
     else:
         print(f"{GREEN}✅ 没有删除方法{RESET}")
 
-    print(f"{CYAN}✅ 已重新加载所有函数文件{RESET}")
-    print(f"{GREEN}✅ reload完成！{RESET}")
+    print(f"{GREEN}✅ 函数索引已更新！{RESET}")
 
     # 根据系统类型执行不同的后续操作
     if system_type == 'windows':
@@ -439,7 +539,7 @@ def main() -> None:
 
         try:
             answer = questionary.select(
-                "PowerShell 不支持热更新，是否需要重新打开终端窗口：",
+                "是否打开新终端，使脚本变更生效：",
                 choices=["Yes", "No"]
             ).ask()
         except KeyboardInterrupt:
@@ -453,26 +553,8 @@ def main() -> None:
             print("已取消（未选择 Yes）。")
             sys.exit(0)
 
-        print("\n准备关闭当前窗口...")
-        terminal_type = detect_terminal()
-        print(f"检测到当前终端窗口类型：{terminal_type}")
-
-        if terminal_type == "vscode":
-            print("即将发送 Ctrl+Shift+` 到 VS Code，请确保焦点在 VS Code 窗口...")
-            time.sleep(2)
-            send_vscode_combo()
-            print("组合键已发送。")
-        elif terminal_type == "tabby":
-            print("正在当前 Tabby 窗口中打开新标签页...")
-            open_tabby_terminal()
-            print(f"新标签页已打开：{os.getcwd()}")
-        else:
-            print("正在当前 Windows Terminal 中打开新标签页...")
-            open_windows_terminal()
-            print(f"新标签页已打开：{os.getcwd()}")
-
-        # 专用退出码：通知 PowerShell 包装函数关闭旧终端；1 保留给真正的错误。
-        sys.exit(43)
+        # 只有明确确认新终端可用，才通知 PowerShell 包装函数关闭旧会话。
+        sys.exit(43 if restart_windows_terminal() else 0)
 
     elif system_type == 'mac':
         # 退出码 42 仅在有「待卸载函数名」时交给 reloadsh.zsh 写临时文件并 unfunction，再 source ~/.zshrc

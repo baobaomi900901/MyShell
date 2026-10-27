@@ -1,0 +1,24 @@
+{
+  "groups": [
+    {
+      "id": "88240489-8da0-4619-bc35-cdbb3bfeca08",
+      "name": "微信",
+      "process_name": "Weixin.exe",
+      "icon": "./icon/88240489-8da0-4619-bc35-cdbb3bfeca08.png",
+      "elements": [
+        {
+          "id": "32dcc571-d21a-4aa2-9a41-7fe053fae300",
+          "name": "聊天输入面板",
+          "type": "win",
+          "process_name": "Weixin.exe"
+        },
+        {
+          "id": "c2a1f2f7-7eac-4474-b314-2a6d9cd707f1",
+          "name": "聊天输入行",
+          "type": "win",
+          "process_name": "Weixin.exe"
+        }
+      ]
+    }
+  ]
+}
