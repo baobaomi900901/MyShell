@@ -156,6 +156,7 @@ Import-Module PSReadLine
 ```json
 {
   "my_project": {
+    "index": 1,
     "win": "D:\\Projects\\my-project",
     "mac": "~/Projects/my-project",
     "description": "我的项目"
@@ -167,6 +168,7 @@ Import-Module PSReadLine
 - 路径支持 `~` 展开；Windows JSON 路径中的反斜杠需要写成 `\\`。
 - `cd_` 的目标应为已存在的目录；`code_` 可以配置文件或目录。
 - 有参数时按键名查找，`my-project` 会转换为 `my_project`；无参数时进入交互选择。
+- 可选的整数 `index` 控制 `cd_`、`code_`、`pw_` 交互菜单和 Tab 补全的顺序：数字越小越靠前；未设置或非整数值排在后面，同序号按键名排序。
 
 ```sh
 cd_ my-project
@@ -178,6 +180,7 @@ code_ my-project
 ```json
 {
   "demo-account": {
+    "index": 1,
     "password": "replace-with-your-local-value",
     "description": "示例账号"
   }

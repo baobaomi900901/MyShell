@@ -66,15 +66,12 @@ $script:myshell_codeCompleter = {
     }
 
     try {
-        $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
-
-        $rows = @(
-            $config.PSObject.Properties | Where-Object { $_.Value.win -or $_.Value.mac } | ForEach-Object {
-                $displayName = $_.Name -replace '_', '-'
-                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
-                [PSCustomObject]@{ Insert = $displayName; Desc = $description }
-            }
-        )
+        $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $configFile))
+        $helper = Join-Path $projectRoot 'public\_script\config_entries.py'
+        $rows = @(python $helper $configFile path json | ConvertFrom-Json | ForEach-Object {
+            [PSCustomObject]@{ Insert = $_.name; Desc = $_.description }
+        })
+        if ($LASTEXITCODE -ne 0) { return }
         $maxLen = 0
         if ($rows.Count -gt 0) {
             $maxLen = @($rows | ForEach-Object { $_.Insert.Length } | Measure-Object -Maximum).Maximum

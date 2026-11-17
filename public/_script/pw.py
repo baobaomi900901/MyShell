@@ -2,6 +2,7 @@
 # public/_script/pw.py
 
 import sys
+from config_entries import sorted_config_keys
 from common import (
     RED, GREEN, YELLOW, RESET,
     load_json_config, interactive_select, write_temp_file
@@ -59,7 +60,8 @@ def main():
 
         max_key_len = max(len(key) for key in valid_entries.keys())
         items = []
-        for key, pwd in valid_entries.items():
+        for key in sorted_config_keys(data, valid_entries):
+            pwd = valid_entries[key]
             desc = data.get(key, {}).get("description", "")
             display_text = f"{key:<{max_key_len}}  # {desc}".rstrip()
             items.append((key, display_text, pwd))

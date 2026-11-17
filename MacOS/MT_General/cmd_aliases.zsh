@@ -10,21 +10,9 @@ _myshell_path_tab() {
   local line
   while IFS= read -r line; do
     [[ -n "$line" ]] && opts+=("$line")
-  done < <(python3 -c '
-import json, sys
-p = sys.argv[1]
-with open(p, encoding="utf-8-sig") as f:
-    d = json.load(f)
-for k in sorted(d.keys()):
-    v = d[k]
-    if not (v.get("win") or v.get("mac")):
-        continue
-    desc = (v.get("description") or "").replace("\n", " ").replace("\r", " ")
-    disp = k.replace("_", "-")
-    print("%s:%s" % (disp, desc))
-' "$json")
+  done < <(python3 "$MYSHELL/public/_script/config_entries.py" "$json" path zsh)
   (( ${#opts[@]} )) || return 1
-  _describe -t targets bookmark opts
+  _describe -V -t targets bookmark opts
 }
 
 compdef _myshell_path_tab cd_
@@ -39,21 +27,9 @@ _myshell_code_tab() {
   local line
   while IFS= read -r line; do
     [[ -n "$line" ]] && opts+=("$line")
-  done < <(python3 -c '
-import json, sys
-p = sys.argv[1]
-with open(p, encoding="utf-8-sig") as f:
-    d = json.load(f)
-for k in sorted(d.keys()):
-    v = d[k]
-    if not (v.get("win") or v.get("mac")):
-        continue
-    desc = (v.get("description") or "").replace("\n", " ").replace("\r", " ")
-    disp = k.replace("_", "-")
-    print("%s:%s" % (disp, desc))
-' "$json")
+  done < <(python3 "$MYSHELL/public/_script/config_entries.py" "$json" path zsh)
   (( ${#opts[@]} )) || return 1
-  _describe -t targets bookmark opts
+  _describe -V -t targets bookmark opts
 }
 
 compdef _myshell_code_tab code_
@@ -68,20 +44,9 @@ _myshell_pw_tab() {
   local line
   while IFS= read -r line; do
     [[ -n "$line" ]] && opts+=("$line")
-  done < <(python3 -c '
-import json, sys
-p = sys.argv[1]
-with open(p, encoding="utf-8-sig") as f:
-    d = json.load(f)
-for k in sorted(d.keys()):
-    v = d[k]
-    if v.get("password") is None:
-        continue
-    desc = (v.get("description") or "").replace("\n", " ").replace("\r", " ")
-    print("%s:%s" % (k, desc))
-' "$json")
+  done < <(python3 "$MYSHELL/public/_script/config_entries.py" "$json" password zsh)
   (( ${#opts[@]} )) || return 1
-  _describe -t targets password opts
+  _describe -V -t targets password opts
 }
 
 compdef _myshell_pw_tab pw_

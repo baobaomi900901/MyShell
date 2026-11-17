@@ -71,16 +71,13 @@ $script:myshell_cdCompleter = {
     }
 
     try {
-        $config = Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
-
         # 与 zsh 类似：补全菜单中 ListItem 显示为「名称    -- 描述」（PSReadLine 列表/工具提示）
-        $rows = @(
-            $config.PSObject.Properties | Where-Object { $_.Value.win -or $_.Value.mac } | ForEach-Object {
-                $displayName = $_.Name -replace '_', '-'
-                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
-                [PSCustomObject]@{ Insert = $displayName; Desc = $description }
-            }
-        )
+        $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $configFile))
+        $helper = Join-Path $projectRoot 'public\_script\config_entries.py'
+        $rows = @(python $helper $configFile path json | ConvertFrom-Json | ForEach-Object {
+            [PSCustomObject]@{ Insert = $_.name; Desc = $_.description }
+        })
+        if ($LASTEXITCODE -ne 0) { return }
         $maxLen = 0
         if ($rows.Count -gt 0) {
             $maxLen = @($rows | ForEach-Object { $_.Insert.Length } | Measure-Object -Maximum).Maximum

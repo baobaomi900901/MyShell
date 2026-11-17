@@ -63,17 +63,12 @@ $script:myshell_pwCompleter = {
     }
 
     try {
-        $raw = Get-Content -Path $configFile -Raw -Encoding UTF8
-        $config = $raw | ConvertFrom-Json
-
-        $rows = @(
-            $config.PSObject.Properties | Where-Object {
-                $_.Value.password -and $null -ne $_.Value.password
-            } | ForEach-Object {
-                $description = ($_.Value.description -replace "`r`n|`n|`r", ' ').Trim()
-                [PSCustomObject]@{ Insert = $_.Name; Desc = $description }
-            }
-        )
+        $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $configFile))
+        $helper = Join-Path $projectRoot 'public\_script\config_entries.py'
+        $rows = @(python $helper $configFile password json | ConvertFrom-Json | ForEach-Object {
+            [PSCustomObject]@{ Insert = $_.name; Desc = $_.description }
+        })
+        if ($LASTEXITCODE -ne 0) { return }
         $maxLen = 0
         if ($rows.Count -gt 0) {
             $maxLen = @($rows | ForEach-Object { $_.Insert.Length } | Measure-Object -Maximum).Maximum

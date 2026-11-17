@@ -3,6 +3,7 @@
 
 import sys
 import os
+from config_entries import sorted_config_keys
 from common import (
     RED, GREEN, YELLOW, RESET,
     get_system_type, load_json_config, interactive_select, write_temp_file
@@ -78,7 +79,8 @@ def main():
         # 构建 items: (key, display_text, value)
         max_key_len = max(len(key) for key in valid_targets.keys())
         items = []
-        for key, path in valid_targets.items():
+        for key in sorted_config_keys(data, valid_targets):
+            path = valid_targets[key]
             desc = data.get(key, {}).get("description", "")
             display_text = f"{key:<{max_key_len}}  # {desc}".rstrip()
             items.append((key, display_text, path))
