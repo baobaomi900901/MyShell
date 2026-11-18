@@ -77,7 +77,11 @@ function glocal {
 }
 
 function gswitch {
+<<<<<<< HEAD
     # 用途: 无参时交互选择分支，有参时直接 git switch <Branch>
+=======
+    # 用途: 无参时像 cd_ 一样用 questionary 上下键选分支后 git switch；有参时直接 git switch <Branch>
+>>>>>>> 833a6b8 (win 命令 gswitch)
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Branch
@@ -88,9 +92,42 @@ function gswitch {
     }
     $scriptPath = Join-Path $env:MYSHELL 'public\_script\gswitch.py'
     if ($Branch) {
+<<<<<<< HEAD
         python $scriptPath $Branch
     } else {
         python $scriptPath
+=======
+        git switch $Branch
+        return
+    }
+
+    $myshell = $env:MYSHELL
+    if (-not $myshell) {
+        Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
+        return
+    }
+
+    $pyScript = Join-Path $myshell "public\_script\gswitch.py"
+    if (-not (Test-Path $pyScript)) {
+        Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
+        return
+    }
+
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        python $pyScript $tempFile
+        if ($LASTEXITCODE -ne 0) {
+            return
+        }
+        $target = Get-Content -Path $tempFile -Raw -ErrorAction SilentlyContinue
+        if (-not [string]::IsNullOrWhiteSpace($target)) {
+            git switch ($target.Trim())
+        }
+    } finally {
+        if (Test-Path $tempFile) {
+            Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
+        }
+>>>>>>> 833a6b8 (win 命令 gswitch)
     }
 }
 
@@ -114,4 +151,8 @@ $script:myshell_gswitchCompleter = {
         }
     }
 }
+<<<<<<< HEAD
 Register-ArgumentCompleter -CommandName gswitch -ParameterName Branch -ScriptBlock $script:myshell_gswitchCompleter
+=======
+Register-ArgumentCompleter -CommandName gswitch -ParameterName Branch -ScriptBlock $script:myshell_gswitchCompleter
+>>>>>>> 833a6b8 (win 命令 gswitch)

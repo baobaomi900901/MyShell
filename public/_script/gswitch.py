@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # public/_script/gswitch.py
+<<<<<<< HEAD
 # 交互选择并切换分支；macOS 与 Windows 共用。
+=======
+# 交互选择分支并写入临时文件，供 PowerShell 执行 git switch（风格同 cd_.ps1 + common.interactive_select）
+>>>>>>> 833a6b8 (win 命令 gswitch)
 
 from __future__ import annotations
 
@@ -8,7 +12,11 @@ import os
 import subprocess
 import sys
 
+<<<<<<< HEAD
 from common import RED, RESET, YELLOW, interactive_select
+=======
+from common import RED, RESET, YELLOW, interactive_select, write_temp_file
+>>>>>>> 833a6b8 (win 命令 gswitch)
 
 
 def _run_git(args: list[str], cwd: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -58,6 +66,7 @@ def _list_remotes() -> list[str]:
     return out
 
 
+<<<<<<< HEAD
 def build_branch_items(
     current: str, locals_: list[str], remotes: list[str]
 ) -> list[tuple[str, str, str]]:
@@ -106,6 +115,51 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{YELLOW}没有可选分支。{RESET}")
         return 0
 
+=======
+def _switch_arg_for_remote(ref: str) -> str:
+    """传给 git switch 的短名：origin/hotfix/x -> hotfix/x"""
+    return ref.split("/", 1)[1]
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print(f"{RED}❌ 参数不足：需要临时文件路径{RESET}")
+        sys.exit(1)
+
+    out_file = sys.argv[1]
+    _ensure_git_repo()
+
+    current = _current_branch()
+    locals_ = _list_locals()
+    local_set = set(locals_)
+
+    remotes_all = _list_remotes()
+    remotes_filtered: list[str] = []
+    for ref in remotes_all:
+        tail = _switch_arg_for_remote(ref)
+        if tail in local_set:
+            continue
+        remotes_filtered.append(ref)
+    remotes_filtered.sort(key=str.lower)
+
+    locals_sorted = sorted(locals_, key=lambda b: (b != current, b.lower()))
+
+    if not locals_sorted and not remotes_filtered:
+        print(f"{YELLOW}没有可选分支。{RESET}")
+        sys.exit(0)
+
+    items: list[tuple[str, str, str]] = []
+
+    for b in locals_sorted:
+        mark = "* " if b == current else "  "
+        display = f"{mark}{b}"
+        items.append((b, display, b))
+
+    for ref in remotes_filtered:
+        display = f"  {ref}"
+        arg = _switch_arg_for_remote(ref)
+        items.append((ref, display, arg))
+>>>>>>> 833a6b8 (win 命令 gswitch)
 
     _, value = interactive_select(
         "选择要切换的分支:",
@@ -114,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if value is None:
         print(f"{YELLOW}已取消操作。{RESET}")
+<<<<<<< HEAD
         return 0
     source, ref = value.split("\t", 1)
     return switch_selected(source, ref)
@@ -121,3 +176,12 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+=======
+        sys.exit(0)
+
+    write_temp_file(out_file, value)
+
+
+if __name__ == "__main__":
+    main()
+>>>>>>> 833a6b8 (win 命令 gswitch)
