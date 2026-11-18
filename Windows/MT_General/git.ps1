@@ -77,45 +77,33 @@ function glocal {
 }
 
 function gswitch {
-<<<<<<< HEAD
-    # 用途: 无参时交互选择分支，有参时直接 git switch <Branch>
-=======
     # 用途: 无参时像 cd_ 一样用 questionary 上下键选分支后 git switch；有参时直接 git switch <Branch>
->>>>>>> 833a6b8 (win 命令 gswitch)
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Branch
     )
-    if (-not $env:MYSHELL) {
-        Write-Error '环境变量 MYSHELL 未设置'
-        return
-    }
-    $scriptPath = Join-Path $env:MYSHELL 'public\_script\gswitch.py'
+
+    # 有参：直接交给 git 处理
     if ($Branch) {
-<<<<<<< HEAD
-        python $scriptPath $Branch
-    } else {
-        python $scriptPath
-=======
         git switch $Branch
         return
     }
 
-    $myshell = $env:MYSHELL
-    if (-not $myshell) {
-        Write-Host "❌ 环境变量 MYSHELL 未设置" -ForegroundColor Red
+    # 无参：检查环境变量并调用 Python 交互选择
+    if (-not $env:MYSHELL) {
+        Write-Error '环境变量 MYSHELL 未设置'
         return
     }
 
-    $pyScript = Join-Path $myshell "public\_script\gswitch.py"
-    if (-not (Test-Path $pyScript)) {
-        Write-Host "❌ 找不到 Python 脚本: $pyScript" -ForegroundColor Red
+    $scriptPath = Join-Path $env:MYSHELL 'public\_script\gswitch.py'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Host "❌ 找不到 Python 脚本: $scriptPath" -ForegroundColor Red
         return
     }
 
     $tempFile = [System.IO.Path]::GetTempFileName()
     try {
-        python $pyScript $tempFile
+        python $scriptPath $tempFile
         if ($LASTEXITCODE -ne 0) {
             return
         }
@@ -127,7 +115,6 @@ function gswitch {
         if (Test-Path $tempFile) {
             Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
         }
->>>>>>> 833a6b8 (win 命令 gswitch)
     }
 }
 
@@ -151,8 +138,4 @@ $script:myshell_gswitchCompleter = {
         }
     }
 }
-<<<<<<< HEAD
 Register-ArgumentCompleter -CommandName gswitch -ParameterName Branch -ScriptBlock $script:myshell_gswitchCompleter
-=======
-Register-ArgumentCompleter -CommandName gswitch -ParameterName Branch -ScriptBlock $script:myshell_gswitchCompleter
->>>>>>> 833a6b8 (win 命令 gswitch)
