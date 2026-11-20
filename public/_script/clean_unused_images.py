@@ -20,17 +20,19 @@ from pathlib import Path
 CONFIG = {
     "scan_extensions": {".md", ".html", ".htm"},
     "image_extensions": {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"},
-    "exclude_dirs": {"node_modules", ".git", "dist", "build"},
+    "exclude_dirs": {"node_modules", ".git", "dist", "build", ".obsidian"},
     "verbose": True,
 }
 
-# 与 JS 版一致的正则
+# 标准 Markdown / HTML / CSS
 RE_MD_IMG = re.compile(r"!\[.*?\]\((.*?)\)")
 RE_HTML_IMG = re.compile(r'<img[^>]+src=["\'](.*?)["\']', re.IGNORECASE)
 RE_CSS_BG = re.compile(
     r"background(?:-image)?\s*:\s*url\([\"']?(.*?)[\"']?\)",
     re.IGNORECASE,
 )
+# Obsidian embed：![[path]]、![[path|100]]、![[path#heading|alias]]
+RE_OBSIDIAN_EMBED = re.compile(r"!\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
 
 
 def _strip_md_angle_brackets(url: str) -> str:
@@ -39,6 +41,11 @@ def _strip_md_angle_brackets(url: str) -> str:
     if len(s) >= 2 and s[0] == "<" and s[-1] == ">":
         return s[1:-1].strip()
     return s
+
+
+def _is_image_ref(ref: str) -> bool:
+    """引用目标是否像图片路径（用于 Obsidian 按文件名匹配时过滤非图片笔记链接）。"""
+    return Path(ref).suffix.lower() in CONFIG["image_extensions"]
 
 
 def log_header() -> None:
@@ -90,12 +97,30 @@ def find_image_references(content: str) -> list[str]:
             clean = _strip_md_angle_brackets(clean)
             if clean and not clean.lower().startswith("http"):
                 matches.append(clean)
+
+    # Obsidian wikilink / embed（路径段已排除 | 与 #）
+    for m in RE_OBSIDIAN_EMBED.finditer(content):
+        clean = m.group(1).strip()
+        if clean and not clean.lower().startswith("http"):
+            matches.append(clean)
+
     return matches
 
 
-def find_used_images(file_paths: list[Path]) -> set[str]:
+def find_used_images(
+    file_paths: list[Path], root_dir: Path
+) -> tuple[set[str], set[str]]:
+    """返回 (规范化绝对路径集合, 文件名小写集合)。
+
+    Obsidian 解析顺序近似：
+    1. 相对当前笔记目录
+    2. 相对库根目录
+    3. 仅文件名时在库内按唯一名查找 → 用 basename 保守标记为已用
+    """
     print("🔎 查找被引用的图片...")
-    used: set[str] = set()
+    used_paths: set[str] = set()
+    used_names: set[str] = set()
+    root = str(root_dir.resolve())
 
     for file_path in file_paths:
         try:
@@ -104,26 +129,34 @@ def find_used_images(file_paths: list[Path]) -> set[str]:
             print(f"⚠️ 无法读取文件 {file_path}: {e}")
             continue
 
+        parent = str(file_path.parent)
         for ref in find_image_references(content):
-            resolved = os.path.normpath(os.path.join(str(file_path.parent), ref))
-            used.add(resolved)
+            used_paths.add(os.path.normpath(os.path.join(parent, ref)))
+            used_paths.add(os.path.normpath(os.path.join(root, ref)))
+            if _is_image_ref(ref):
+                used_names.add(Path(ref).name.lower())
 
     if CONFIG["verbose"]:
-        print(f"🔗 找到 {len(used)} 个被引用的图片路径")
+        print(f"🔗 找到 {len(used_paths)} 个被引用路径候选, {len(used_names)} 个文件名")
 
-    return used
+    return used_paths, used_names
 
 
-def find_unused_images(all_images: list[Path], used_images: set[str]) -> list[Path]:
-    """未使用图片：规范化后与已引用集合比对（与 JS 版一致）。"""
-    used_list = [os.path.normpath(p) for p in used_images]
+def find_unused_images(
+    all_images: list[Path], used_paths: set[str], used_names: set[str]
+) -> list[Path]:
+    """未使用图片：路径命中或（Obsidian）文件名命中均视为已引用。"""
+    used_norm = {os.path.normpath(p) for p in used_paths}
+    used_normcase = {os.path.normcase(p) for p in used_norm}
 
     def is_used(img: Path) -> bool:
         normalized = os.path.normpath(str(img))
-        if any(os.path.normpath(u) == normalized for u in used_list):
+        if normalized in used_norm:
             return True
-        # Windows：盘符大小写等
-        return any(os.path.normcase(os.path.normpath(u)) == os.path.normcase(normalized) for u in used_list)
+        if os.path.normcase(normalized) in used_normcase:
+            return True
+        # Obsidian：![[foo.png]] 可跨目录按文件名解析
+        return img.name.lower() in used_names
 
     return [img for img in all_images if not is_used(img)]
 
@@ -197,8 +230,8 @@ def main() -> int:
 
     try:
         all_files, all_images = scan_project(target)
-        used = find_used_images(all_files)
-        unused = find_unused_images(all_images, used)
+        used_paths, used_names = find_used_images(all_files, target)
+        unused = find_unused_images(all_images, used_paths, used_names)
 
         if not unused:
             print("🎉 没有发现未使用的图片资源!")
